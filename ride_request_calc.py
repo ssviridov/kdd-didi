@@ -36,11 +36,11 @@ def get_info_vec(data):
 
 if __name__ == '__main__':
     for file in os.listdir(PATH_TO_DATA):
-        print(f'{datetime.datetime.now} - {file} starts')
+        print(f'{datetime.datetime.now()} - {file} starts')
         sample = ddf.read_csv(PATH_TO_DATA + file, names=['order_id', 'ride_start_time', 'ride_end_time',
                                                           'lon_start', 'lat_start', 'lon_end', 'lat_end', 'reward'])
         sample = sample.reset_index().set_index('index')
         results = get_info_vec(sample).compute()
-        print(f'{datetime.datetime.now} - {file} prepared')
+        print(f'{datetime.datetime.now()} - {file} prepared')
         results.to_sql('ride_request_data_calc', eng, schema='calc', if_exists='append', index=False, chunksize=10000)
-        print(f'{datetime.datetime.now} - {file} in DB')
+        print(f'{datetime.datetime.now()} - {file} in DB')
