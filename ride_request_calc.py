@@ -12,12 +12,6 @@ sys.path.append('../')
 
 from coord_to_hexagon import CoordToHex
 
-eng = create_engine(
-    'postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi')
-hex_client = CoordToHex('data/hexagon_grid_table.csv')
-PATH_TO_DATA = 'data/total_ride_request/'
-client = Client(processes=True)
-
 
 def get_info_vec(data):
     dttm_start = pd.to_datetime(data['ride_start_time'].compute(), unit='s')
@@ -49,6 +43,12 @@ def write_orders_file(filename):
 
 
 if __name__ == '__main__':
+    eng = create_engine(
+        'postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi')
+    hex_client = CoordToHex('data/hexagon_grid_table.csv')
+    PATH_TO_DATA = 'data/total_ride_request/'
+    client = Client(processes=True)
+
     files = os.listdir(PATH_TO_DATA)
     with joblib.parallel_backend('dask'):
         joblib.Parallel(verbose=100)(
