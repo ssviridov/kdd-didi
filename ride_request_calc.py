@@ -14,6 +14,7 @@ from coord_to_hexagon import CoordToHex
 
 
 def get_info_vec(data):
+    hex_client = CoordToHex('data/hexagon_grid_table.csv')
     dttm_start = pd.to_datetime(data['ride_start_time'].compute(), unit='s')
     dttm_end = pd.to_datetime(data['ride_end_time'].compute(), unit='s')
     data['order_date'] = dttm_start.dt.date
@@ -32,9 +33,12 @@ def get_info_vec(data):
 
 
 def write_orders_file(filename):
+    eng = create_engine(
+        'postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi')
+    PATH_TO_DATA = 'data/total_ride_request/'
     print(f'{datetime.datetime.now()} - {filename} starts')
     sample = ddf.read_csv(PATH_TO_DATA + filename, names=['order_id', 'ride_start_time', 'ride_end_time',
-                                                      'lon_start', 'lat_start', 'lon_end', 'lat_end', 'reward'])
+                                                          'lon_start', 'lat_start', 'lon_end', 'lat_end', 'reward'])
     sample = sample.reset_index().set_index('index')
     results = get_info_vec(sample).compute()
     print(f'{datetime.datetime.now()} - {filename} prepared')
@@ -43,13 +47,9 @@ def write_orders_file(filename):
 
 
 if __name__ == '__main__':
-    eng = create_engine(
-        'postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi')
-    hex_client = CoordToHex('data/hexagon_grid_table.csv')
-    PATH_TO_DATA = 'data/total_ride_request/'
     client = Client(processes=True)
 
-    files = os.listdir(PATH_TO_DATA)
+    files = os.listdir('data/total_ride_request/')
     with joblib.parallel_backend('dask'):
         joblib.Parallel(verbose=100)(
             joblib.delayed(write_orders_file)(file)
