@@ -1,5 +1,7 @@
 import pandas as pd
 import dask.dataframe as ddf
+from dask.distributed import Client
+import joblib
 import sys
 import os
 import datetime
@@ -14,6 +16,7 @@ eng = create_engine(
     'postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi')
 hex_client = CoordToHex('data/hexagon_grid_table.csv')
 PATH_TO_DATA = 'data/total_ride_request/'
+client = Client(processes=True)
 
 
 def get_info_vec(data):
@@ -34,13 +37,21 @@ def get_info_vec(data):
     return data
 
 
+def write_orders_file(filename):
+    print(f'{datetime.datetime.now()} - {filename} starts')
+    sample = ddf.read_csv(PATH_TO_DATA + filename, names=['order_id', 'ride_start_time', 'ride_end_time',
+                                                      'lon_start', 'lat_start', 'lon_end', 'lat_end', 'reward'])
+    sample = sample.reset_index().set_index('index')
+    results = get_info_vec(sample).compute()
+    print(f'{datetime.datetime.now()} - {filename} prepared')
+    results.to_sql('ride_request_data_calc', eng, schema='calc', if_exists='append', index=False, chunksize=10000)
+    print(f'{datetime.datetime.now()} - {filename} in DB')
+
+
 if __name__ == '__main__':
-    for file in os.listdir(PATH_TO_DATA):
-        print(f'{datetime.datetime.now()} - {file} starts')
-        sample = ddf.read_csv(PATH_TO_DATA + file, names=['order_id', 'ride_start_time', 'ride_end_time',
-                                                          'lon_start', 'lat_start', 'lon_end', 'lat_end', 'reward'])
-        sample = sample.reset_index().set_index('index')
-        results = get_info_vec(sample).compute()
-        print(f'{datetime.datetime.now()} - {file} prepared')
-        results.to_sql('ride_request_data_calc', eng, schema='calc', if_exists='append', index=False, chunksize=10000)
-        print(f'{datetime.datetime.now()} - {file} in DB')
+    files = os.listdir(PATH_TO_DATA)
+    with joblib.parallel_backend('dask'):
+        joblib.Parallel(verbose=100)(
+            joblib.delayed(write_orders_file)(file)
+            for file in files)
+
