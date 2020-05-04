@@ -1,7 +1,7 @@
 import pandas as pd
 import dask.dataframe as ddf
 from dask.distributed import Client
-import joblib
+from joblib import Parallel, delayed
 import sys
 import os
 import datetime
@@ -47,9 +47,12 @@ def write_orders_file(filename):
 
 
 if __name__ == '__main__':
-    client = Client(processes=True)
-
     files = os.listdir('data/total_ride_request/')
-    with joblib.parallel_backend('dask'):
-        joblib.Parallel()(joblib.delayed(write_orders_file)(files[i]) for i in range(len(files)))
+    Parallel(n_jobs=-1)(delayed(write_orders_file)(files[i]) for i in range(len(files)))
+    # client = Client(processes=True)
+    #
+    # files = os.listdir('data/total_ride_request/')
+    # with joblib.parallel_backend('dask'):
+    #     joblib.Parallel()(joblib.delayed(write_orders_file)(files[i]) for i in range(len(files)))
+
 
