@@ -12,8 +12,8 @@ from coord_to_hexagon import CoordToHex
 
 eng = create_engine(
     'postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi')
-hex_client = CoordToHex('../data/hexagon_grid_table.csv')
-PATH_TO_DATA = '../data/total_ride_request/'
+hex_client = CoordToHex('data/hexagon_grid_table.csv')
+PATH_TO_DATA = 'data/total_ride_request/'
 
 
 def get_info_vec(data):
