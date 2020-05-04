@@ -51,7 +51,5 @@ if __name__ == '__main__':
 
     files = os.listdir('data/total_ride_request/')
     with joblib.parallel_backend('dask'):
-        joblib.Parallel(verbose=100)(
-            joblib.delayed(write_orders_file)(file)
-            for file in files)
+        joblib.Parallel()(joblib.delayed(write_orders_file)(files[i]) for i in range(len(files)))
 
