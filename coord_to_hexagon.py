@@ -46,11 +46,22 @@ class CoordToHex:
 
 
 if __name__ == "__main__":
-    df_req = pd.read_csv("data/total_ride_request/order_20161101",
-                         names=["order", "time_start", "time_stop", "pickup_lon", "pickup_lat",
-                                "dropoff_lon", "dropoff_lat", "reward"])
+    import os
+
     cth = CoordToHex(PATH_DATA)
-    df_req["pickup_hex"] = cth.get_hex_array(df_req[["pickup_lon", "pickup_lat"]])
+
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    req_dir = os.path.join(cur_dir, "data", "total_ride_request")
+    for file in next(os.walk(req_dir))[2]:
+        file_path = os.path.join(req_dir, file)
+        df_req = pd.read_csv(file_path,
+                             names=["order", "time_start", "time_stop", "pickup_lon", "pickup_lat",
+                                    "dropoff_lon", "dropoff_lat", "reward"])
+        df_req["pickup_hex"] = cth.get_hex_array(df_req[["pickup_lon", "pickup_lat"]])
+        df_req["dropoff_hex"] = cth.get_hex_array(df_req[["dropoff_lon", "dropoff_lat"]])
+
+        dest_path = os.path.join(req_dir, file + "_hex")
+        df_req[["order", "pickup_hex", "dropoff_hex"]].to_csv(dest_path, index=False, sep=";")
 
     # EXPERIMENTS
     # df_gps = pd.read_csv("data/gps/gps_20161101", names=["driver", "order", "timestamp", "lon", "lat"])
