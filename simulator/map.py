@@ -7,8 +7,9 @@ import networkx as nx
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 class Map:
-    def __init__(self):
-        with open(os.path.join(cur_dir, 'data', 'hex_graph.pickle')) as f:
+    def __init__(self, env):
+        self.env = env
+        with open(os.path.join(cur_dir, 'data', 'hex_graph.pickle'), 'rb') as f:
             self.graph = pickle.load(f)
 
         self.coords_df = pd.read_csv(os.path.join(cur_dir, 'data', 'coords_hex.csv'))
