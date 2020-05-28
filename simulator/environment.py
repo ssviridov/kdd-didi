@@ -4,10 +4,11 @@ from driver import DriversCollection
 from order import OrdersCollection
 from agent import Agent
 from map import Map
+from models.order_generator import OrderGenerator
+from datetime import timedelta
 
 
 class Environment:
-
     VALID_REPOSITION_TIME = 300
     IDLE_SPEED_M_PER_S = 3
     REPO_SPEED_M_PER_S = 3
@@ -16,7 +17,7 @@ class Environment:
     def __init__(self, day_of_week: int, agent: Agent):
         self.day_of_week = day_of_week
         self.t = 0
-        self.hour = 0
+        self.hours = 0
         self.seconds = 0
         self.minutes = 0
 
@@ -35,13 +36,13 @@ class Environment:
 
     def update_current_time(self, current_seconds):
         self.t = current_seconds
-        self.hour = current_seconds//(60*60)
-        self.minutes = (current_seconds - self.hour * 60 * 60) // 60
-        self.seconds = current_seconds - self.hour * 60 * 60 - self.minutes * 60
+        self.hours = current_seconds // (60 * 60)
+        self.minutes = (current_seconds - self.hours * 60 * 60) // 60
+        self.seconds = current_seconds - self.hours * 60 * 60 - self.minutes * 60
 
     @property
     def timestamp(self):
-        return int(dt.datetime.combine(dt.date.today(), dt.time(self.hour, self.minutes, self.seconds)).timestamp())
+        return int(dt.datetime.combine(dt.date.today(), dt.time(self.hours, self.minutes, self.seconds)).timestamp())
 
     def reposition_actions(self):
         all_idle_drivers = self.drivers_collection.get_drivers('idle')
@@ -67,7 +68,7 @@ class Environment:
 
     def dispatching_actions(self):
         all_idle_drivers = self.drivers_collection.get_dispatching_drivers()
-        orders = self.orders_collection.get_orders()
+        orders = self.orders_collection.get_orders(status="unassigned")
 
         # All idle drivers all eligible for dispatching
         # Order-Driver Matching Model
@@ -93,7 +94,7 @@ class Environment:
         prepared_request = dict(idle_driver=[{'driver_id': d.driver_id,
                                               'driver_location': d.driver_location} for d in idle_drivers],
                                 day_of_week=self.day_of_week,
-                                hour=self.hour)
+                                hour=self.hours)
         # TODO Use idle transition probability model for assigning next_idle_location
         model_response = [{'driver_id': d.driver_id, 'idle_hex': d.driver_location} for d in idle_drivers]
         self.drivers_collection.idle_movement(model_response)
@@ -104,15 +105,9 @@ class Environment:
         agent_response = self.agent.dispatch(prepared_request)
         # TODO: assign orders to vehicles and vehicles to orders, delete unassigned orders
 
-
 # if __name__ == '__main__':
 #     a = Agent()
 #     env = Environment(3, a)
 #     idle = env.drivers_collection.get_reposition_drivers(n_drivers=5)
 #     env._repositioning(idle)
 #     print('hello')
-
-
-
-
-

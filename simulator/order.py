@@ -1,4 +1,5 @@
 import itertools
+import pandas as pd
 
 
 class OrderException(Exception):
@@ -13,10 +14,10 @@ class Order:
     newid = itertools.count()
     status_list = ['assigned', 'unassigned']
 
-    def __init__(self, env):
+    def __init__(self, env, start_hex, end_hex):
         self.env = env
         self.order_id = next(self.newid)
-        self.order_start_location, self.order_finish_location = self.env.map.generate_order_endpoints()
+        self.order_start_location, self.order_finish_location = self.env.map.generate_order_endpoints(start_hex, end_hex)
         self.status = 'unassigned'
         self.vehicle = None
         self.reward = None
@@ -42,9 +43,9 @@ class OrdersCollection(list):
         self.env = env
         super().__init__()
 
-    def generate_orders(self, n_orders: int):
-        for _ in range(n_orders):
-            self.append(Order(env=self.env))
+    def add_orders(self, orders: pd.DataFrame):
+        for _, row in orders.iterrows():
+            self.append(Order(env=self.env, start_hex=row["pickup_hex"], end_hex=row["dropoff_hex"]))
 
     def get_orders(self, status: str):
         if status not in Order.status_list:
