@@ -1,11 +1,14 @@
 import datetime as dt
+import itertools
+import random
+import numpy as np
 
 from driver import DriversCollection
 from order import OrdersCollection
 from agent import Agent
 from map import Map
 from models.order_generator import OrderGenerator
-from datetime import timedelta
+from models.cancel_model import CancelModel
 
 
 class Environment:
@@ -33,6 +36,8 @@ class Environment:
         self.drivers_collection.generate_drivers(n_drivers=100)
 
         self.df_orders = self._generate_orders_for_day()
+
+        self.cancel_model = CancelModel()
 
     def update_current_time(self, current_seconds):
         self.t = current_seconds
@@ -63,7 +68,8 @@ class Environment:
 
     def generate_orders(self):
         orders = self.df_orders.loc[
-            self.df_orders["order_time"] == timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds)]
+            self.df_orders["order_time"] == dt.timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds),
+            ["pickup_hex", "dropoff_hex"]]
         self.orders_collection.add_orders(orders)
 
     def balancing_drivers(self):
@@ -80,7 +86,13 @@ class Environment:
 
     def cancel_orders(self):
         # TODO use order cancellation model for cancelling order
-        orders_to_cancel = []
+        orders = self.orders_collection.get_orders(status="assigned")
+        if not orders:
+            return None
+        all_probs = self.cancel_model.sample_probs(len(orders))
+        idx = [order.order_driver_distance // 200 for order in orders]
+        order_probs = np.choose(idx, all_probs)
+        orders_to_cancel = list(itertools.compress(orders, np.random.binomial(1, order_probs)))
         self.orders_collection.cancel_orders(orders_to_cancel)
 
     def move_drivers(self):
@@ -105,8 +117,14 @@ class Environment:
 
     def _dispatching(self, orders, drivers):
         # TODO: prepare request for agent.dispatch()
-        prepared_request = [orders, drivers]
+        prepared_request = [
+            {"order_id": order.order_id, "driver_id": driver.driver_id, "reward_units": random.random()}
+            for order, driver in itertools.product(orders, drivers)]
         agent_response = self.agent.dispatch(prepared_request)
+        for r in agent_response:
+            order = self.orders_collection.get_order_by_id(r["order_id"])
+            driver = self.drivers_collection.get_by_driver_id(r["driver_id"])
+            driver.take_order(order, 0, 0, 0, random.randint(0, 2000))
         # TODO: assign orders to vehicles and vehicles to orders, delete unassigned orders
 
 # if __name__ == '__main__':

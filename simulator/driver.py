@@ -78,14 +78,14 @@ class Driver:
         self.route = {self.env.t: self.driver_location}
         self.idle_time = abs(int(np.random.normal(300, 200)))
 
-    def take_order(self, order_object, reward_units: float, pick_up_eta: float,
+    def take_order(self, order_object, reward: float, pick_up_eta: float,
                    order_finish_timestamp: int, order_driver_distance: float):
         if self.status == 'assigned':
             raise DriverException(f'Driver {self.driver_id} already assigned to order {self.order.order_id}')
         elif self.status == 'not available':
             raise DriverException(f'Driver {self.driver_id} is not available at the moment')
         else:
-            order_object.assigning(vehicle=self, reward_units=reward_units, pick_up_eta=pick_up_eta,
+            order_object.assigning(vehicle=self, reward=reward, pick_up_eta=pick_up_eta,
                                    order_finish_timestamp=order_finish_timestamp,
                                    order_driver_distance=order_driver_distance)
             self.order = order_object

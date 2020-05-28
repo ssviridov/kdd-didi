@@ -3,9 +3,12 @@ import os
 import pandas as pd
 from scipy import stats
 
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(cur_dir, "src", "cancel_probs_distr.csv")
+
 
 class CancelModel:
-    def __init__(self, bw=0.005, data_path="cancel_probs_distr.csv"):
+    def __init__(self, bw=0.005, data_path=data_path):
         """
         data_path : path to DataFrame - Should contain only prob_cols!!!
         """
@@ -18,7 +21,5 @@ class CancelModel:
 
 
 if __name__ == "__main__":
-    cur_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(cur_dir, "src", "cancel_probs_distr.csv")
-    model = CancelModel(data_path=data_path)
+    model = CancelModel()
     print(model.sample_probs(1))

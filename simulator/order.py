@@ -17,7 +17,8 @@ class Order:
     def __init__(self, env, start_hex, end_hex):
         self.env = env
         self.order_id = next(self.newid)
-        self.order_start_location, self.order_finish_location = self.env.map.generate_order_endpoints(start_hex, end_hex)
+        self.order_start_location, self.order_finish_location = self.env.map.generate_order_endpoints(start_hex,
+                                                                                                      end_hex)
         self.status = 'unassigned'
         self.vehicle = None
         self.reward = None
@@ -46,6 +47,9 @@ class OrdersCollection(list):
     def add_orders(self, orders: pd.DataFrame):
         for _, row in orders.iterrows():
             self.append(Order(env=self.env, start_hex=row["pickup_hex"], end_hex=row["dropoff_hex"]))
+
+    def get_order_by_id(self, order_id: int):
+        return next(order for order in self if order.order_id == order_id)
 
     def get_orders(self, status: str):
         if status not in Order.status_list:
