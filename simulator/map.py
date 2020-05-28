@@ -20,13 +20,10 @@ class Map:
         hexagon = np.random.choice(self.coords_df.hex.unique())
         return hexagon
 
-    def generate_order_endpoints(self):
-        # TODO implement order_generation model for select start-end hexagons for order
-        start_hex, end_hex = np.random.choice(self.coords_df.hex.unique()), \
-                             np.random.choice(self.coords_df.hex.unique())
+    def generate_order_endpoints(self, start_hex, end_hex):
         start_coords = self.coords_df.loc[self.coords_df.hex == start_hex]
         end_coords = self.coords_df.loc[self.coords_df.hex == end_hex]
-        return eval(np.random.choice(start_coords.coord)), eval(np.random.choice(end_coords.coord))
+        return np.random.choice(start_coords.coord), np.random.choice(end_coords.coord)
 
     def get_grid(self, lonlat: list):
         return self.coords_df.loc[self.coords_df.str_coord == str(lonlat)].hex.values[0]

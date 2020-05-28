@@ -75,7 +75,7 @@ class Driver:
         self.driver_reward = 0
         self.status = 'idle'
         self.order = None
-        self.route = {self.env.current_seconds: self.driver_location}
+        self.route = {self.env.t: self.driver_location}
         self.idle_time = abs(int(np.random.normal(300, 200)))
 
     def take_order(self, order_object, reward_units: float, pick_up_eta: float,
@@ -96,7 +96,7 @@ class Driver:
         if self.status != 'assigned':
             self._move()
             if self.status == 'idle':
-                self.idle_time += self.env.params.STEP_UNIT
+                self.idle_time += self.env.STEP_UNIT
             if self.status == 'reposition' and not self.route:
                 self.status = 'idle'
         else:
@@ -107,7 +107,7 @@ class Driver:
                 self.env.orders_collection.cancel_orders([self.order])
 
     def _move(self):
-        next_location = self.route.get(self.env.current_seconds)
+        next_location = self.route.get(self.env.t)
         if not next_location:
             pass
         else:

@@ -32,7 +32,7 @@ class Environment:
         # Somehow calculate number of drivers for init
         self.drivers_collection.generate_drivers(n_drivers=100)
 
-        # self.generate_orders_for_day()
+        self.df_orders = self._generate_orders_for_day()
 
     def update_current_time(self, current_seconds):
         self.t = current_seconds
@@ -57,10 +57,14 @@ class Environment:
         # Idle Drivers Movement Model (just assigning Driver.next_idle_location without move())
         self._idle_movement(idle_drivers)
 
+    def _generate_orders_for_day(self):
+        order_gen = OrderGenerator()
+        return order_gen.generate_orders(weekday=self.day_of_week)
+
     def generate_orders(self):
-        # todo: return pre calculated orders for current second
-        n_orders = self._n_generate_orders()
-        self.orders_collection.generate_orders(n_orders=n_orders)
+        orders = self.df_orders.loc[
+            self.df_orders["order_time"] == timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds)]
+        self.orders_collection.add_orders(orders)
 
     def balancing_drivers(self):
         # TODO balance number of drivers in system by deleting and generating new ones
