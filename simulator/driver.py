@@ -23,17 +23,17 @@ class DriversCollection(list):
         super().__init__()
 
     def generate_drivers(self, n_drivers: int):
-        logger.info("Start generating drivers")
+        # logger.info("Start generating drivers")
         for _ in range(n_drivers):
             self.append(Driver(env=self.env))
 
     def move_drivers(self):
-        logger.info("Start moving drivers")
+        # logger.info("Start moving drivers")
         for driver in self:
             driver.move()
 
     def get_drivers(self, status: str, n_drivers=None):
-        logger.info("Start getting drivers")
+        # logger.info("Start getting drivers")
         if status not in Driver.status_list:
             raise DriversCollectionException(f'status must be one of {Driver.status_list}')
         drivers = [i for i in self if i.status == status]
@@ -44,13 +44,13 @@ class DriversCollection(list):
             return drivers
 
     def get_reposition_drivers(self, n_drivers: int):
-        logger.info("Start getting drivers for reposition")
+        # logger.info("Start getting drivers for reposition")
         idle_drivers = self.get_drivers(status='idle')
         for_reposition = [i for i in idle_drivers if i.idle_time >= self.env.VALID_REPOSITION_TIME]
         return for_reposition[:n_drivers]
 
     def reposition(self, agent_response: list):
-        logger.info("Start repositioning drivers")
+        # logger.info("Start repositioning drivers")
         for resp in agent_response:
             driver = self.get_by_driver_id(resp['driver_id'])
             driver.route = self.env.map.calculate_path(driver.driver_location, resp['destination'])
@@ -58,17 +58,17 @@ class DriversCollection(list):
             driver.idle_time = 0
 
     def idle_movement(self, model_response: list):
-        logger.info("Start moving idle drivers")
+        # logger.info("Start moving idle drivers")
         for resp in model_response:
             driver = self.get_by_driver_id(resp['driver_id'])
             driver.route = self.env.map.calculate_path(driver.driver_location, resp['idle_hex'])
 
     def get_dispatching_drivers(self):
-        logger.info("Start getting dispatching drivers")
+        # logger.info("Start getting dispatching drivers")
         return self.get_drivers(status='idle') + self.get_drivers(status='reposition')
 
     def get_by_driver_id(self, driver_id):
-        logger.info("Start get driver by id")
+        # logger.info("Start get driver by id")
         drivers = {i.driver_id: i for i in self}
         if driver_id not in drivers.keys():
             raise DriversCollectionException(f'Driver_id={driver_id} does not exists')
@@ -93,7 +93,7 @@ class Driver:
 
     def take_order(self, order_object, reward: float, pick_up_eta: float,
                    order_finish_timestamp: int, order_driver_distance: float):
-        logger.info(f"Start taking order {order_object.order_id} by driver {self.driver_id}")
+        # logger.info(f"Start taking order {order_object.order_id} by driver {self.driver_id}")
         if self.status == 'assigned':
             raise DriverException(f'Driver {self.driver_id} already assigned to order {self.order.order_id}')
         elif self.status == 'not available':
@@ -131,7 +131,7 @@ class Driver:
             del self.route[self.env.current_seconds]
 
     def cancel_order(self):
-        logger.info(f"Start cancelling order assigned to driver {self.driver_id}")
+        # logger.info(f"Start cancelling order assigned to driver {self.driver_id}")
         if self.status == 'assigned':
             self.order = None
             self.status = 'idle'

@@ -45,7 +45,7 @@ class Environment:
 
         self.d_orders = None
 
-        self.cancel_model = CancelModel()
+        self.cancel_model = CancelModel(weekday=day_of_week)
 
     def update_current_time(self, current_seconds):
         logger.info(f"[{current_seconds}s] - simulation time")
@@ -102,7 +102,7 @@ class Environment:
         if not orders:
             return None
         all_probs = self.cancel_model.sample_probs(len(orders))
-        idx = [order.order_driver_distance // 200 for order in orders]  # NOTE: 0 <= order_driver_distance < 2000
+        idx = [int(order.order_driver_distance // 200) for order in orders]  # NOTE: 0 <= order_driver_distance < 2000
         order_probs = np.choose(idx, all_probs)
         orders_to_cancel = list(itertools.compress(orders, np.random.binomial(1, order_probs)))
         self.orders_collection.cancel_orders(orders_to_cancel)

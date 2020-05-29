@@ -27,11 +27,11 @@ class Map:
         return hexagon, lonlat
 
     def generate_order_endpoints(self, start_hex, end_hex):
-        logger.info(f"Start loc start_coords")
+        # logger.info(f"Start loc start_coords")
         start_row = self.coords_df.loc[self.coords_df.hex == start_hex].reset_index().iloc[0]
-        logger.info(f"Start loc stop_coords")
+        # logger.info(f"Start loc stop_coords")
         end_row = self.coords_df.loc[self.coords_df.hex == end_hex].reset_index().iloc[0]
-        logger.info(f"Start random choice")
+        # logger.info(f"Start random choice")
         start_location = self._generate_coord(start_row)
         end_location = self._generate_coord(end_row)
         return start_location, end_location
