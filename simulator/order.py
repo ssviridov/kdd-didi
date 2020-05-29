@@ -19,11 +19,14 @@ class Order:
     status_list = ['assigned', 'unassigned']
 
     def __init__(self, env, start_hex, end_hex):
+        logger.info(f"Start initializing order")
         self.env = env
         self.order_id = next(self.newid)
         self.start_hex, self.finish_hex = start_hex, end_hex
+        logger.info(f"Start generate order endpoints")
         self.order_start_location, self.order_finish_location = self.env.map.generate_order_endpoints(start_hex,
                                                                                                       end_hex)
+        logger.info(f"Stop generate order endpoints")
         self.status = 'unassigned'
         self.vehicle = None
         self.reward = None
@@ -33,6 +36,7 @@ class Order:
 
     def assigning(self, vehicle, reward: float, pick_up_eta: float,
                   order_finish_timestamp: int, order_driver_distance: float):
+        logger.info(f"Start assigning order {self.order_id} to driver {vehicle.driver_id}")
         self.vehicle = vehicle
         self.reward = reward
         self.pick_up_eta = pick_up_eta
@@ -41,17 +45,19 @@ class Order:
         self.status = 'assigned'
 
     def cancel(self):
+        logger.info(f"Start cancelling order {self.order_id}")
         self.vehicle.cancel_order()
 
 
 class OrdersCollection(list):
     def __init__(self, env):
+        logger.info(f"Start initializing order collection")
         self.env = env
         super().__init__()
 
-    def add_orders(self, orders: pd.DataFrame):
-        for _, row in orders.iterrows():
-            self.append(Order(env=self.env, start_hex=row["pickup_hex"], end_hex=row["dropoff_hex"]))
+    def add_orders(self, orders: list):
+        for start_hex, end_hex in orders:
+            self.append(Order(env=self.env, start_hex=start_hex, end_hex=end_hex))
 
     def get_order_by_id(self, order_id: int):
         return next(order for order in self if order.order_id == order_id)

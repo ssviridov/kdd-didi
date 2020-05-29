@@ -41,7 +41,7 @@ class Environment:
         # Somehow calculate number of drivers for init
         self.drivers_collection.generate_drivers(n_drivers=1000)
 
-        self.df_orders = None
+        self.d_orders = None
 
         self.cancel_model = CancelModel()
 
@@ -73,13 +73,11 @@ class Environment:
     def generate_orders(self):
         logger.info("Start generating orders for day")
         order_gen = OrderGenerator()
-        self.df_orders = order_gen.generate_orders(weekday=self.day_of_week)
+        self.d_orders = order_gen.generate_orders(weekday=self.day_of_week)
 
     def get_orders_for_second(self):
         logger.info("Get orders for this simulation second")
-        orders = self.df_orders.loc[
-            self.df_orders["order_time"] == dt.timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds),
-            ["pickup_hex", "dropoff_hex"]]
+        orders = self.d_orders.get(self.t, [])
         self.orders_collection.add_orders(orders)
 
     def balancing_drivers(self):
@@ -102,7 +100,7 @@ class Environment:
         if not orders:
             return None
         all_probs = self.cancel_model.sample_probs(len(orders))
-        idx = [order.order_driver_distance // 200 for order in orders]
+        idx = [order.order_driver_distance // 200 for order in orders]  # NOTE: 0 <= order_driver_distance < 2000
         order_probs = np.choose(idx, all_probs)
         orders_to_cancel = list(itertools.compress(orders, np.random.binomial(1, order_probs)))
         self.orders_collection.cancel_orders(orders_to_cancel)
@@ -137,7 +135,7 @@ class Environment:
         for r in agent_response:
             order = self.orders_collection.get_order_by_id(r["order_id"])
             driver = self.drivers_collection.get_by_driver_id(r["driver_id"])
-            driver.take_order(order, 0, 0, 0, random.randint(0, 2000))
+            driver.take_order(order, 0, 0, 0, random.randint(0, 1999))
         # TODO: assign orders to vehicles and vehicles to orders, delete unassigned orders
 
 # if __name__ == '__main__':

@@ -57,7 +57,8 @@ class RewardModel:
 
         features = pd.Series()
         features['distance'] = get_distance(request['order_start_location'], request['order_finish_location'])
-        features['duration'] = ((order_finish_dt - current_dt).total_seconds() - request['pick_up_eta']) / 60
+        # features['duration'] = ((order_finish_dt - current_dt).total_seconds() - request['pick_up_eta']) / 60
+        features['duration'] = (request['order_finish_timestamp'] - request['timestamp'] - request['pick_up_eta'])/60
         features = features.append(generate_dummy(request['day_of_week']+1, [i for i in range(1, 8)], 'p_w'))
         features = features.append(generate_dummy(current_dt.hour, [i for i in range(0, 24)], 'p_h'))
         features = features.append(generate_dummy(order_finish_dt.isoweekday(), [i for i in range(1, 8)], 'd_w'))

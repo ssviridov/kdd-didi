@@ -44,10 +44,10 @@ class OrderGenerator:
     def generate_orders(self, weekday: int):
         assert (weekday >= 1) and (weekday <= 7)
 
-        start = timedelta(0)
-        df_list = []
+        start = 0
+        d_orders = {}
         for h in range(24):
-            cur_time = start + timedelta(hours=h)
+            cur_time = start + h * 3600
             lambd = self.determine_lambda(weekday=weekday, hour=h)
             correspondences, weights = self.determine_correspondence_probs(weekday=weekday, hour=h)
             if lambd == 0:  # go to next hour
@@ -56,13 +56,12 @@ class OrderGenerator:
                 t = np.random.exponential(scale=1 / lambd, size=int(2 * lambd))
                 t_cum = np.cumsum(t)
                 n_req = np.argmin(t_cum < 1)
-                order_time = [cur_time + timedelta(seconds=self.hour_to_seconds(h)) for h in t_cum[:n_req]]
+                order_time = [cur_time + self.hour_to_seconds(h) for h in t_cum[:n_req]]
                 idx = np.random.choice(np.arange(correspondences.shape[0]), size=n_req, p=weights)
                 order_correspondence = correspondences[idx]
-                _df = pd.DataFrame(order_correspondence, columns=["pickup_hex", "dropoff_hex"])
-                _df["order_time"] = order_time
-                df_list.append(_df)
-        return pd.concat(df_list, ignore_index=True)
+                for k, v in zip(order_time, order_correspondence):
+                    d_orders.setdefault(k, []).append(tuple(v))
+        return d_orders
 
     @staticmethod
     def hour_to_seconds(h):
