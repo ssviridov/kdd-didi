@@ -1,6 +1,9 @@
 import itertools
 import random
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DriverException(Exception):
@@ -118,4 +121,3 @@ class Driver:
         if self.status == 'assigned':
             self.order = None
             self.status = 'idle'
-

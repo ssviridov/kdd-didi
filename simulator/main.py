@@ -1,5 +1,14 @@
+import json
+
 from .environment import Environment
 from .agent import Agent
+
+import logging
+from logging import config
+
+with open("logging.json", 'r') as f:
+    logging.config.dictConfig(json.load(f))
+logger = logging.getLogger(__name__)
 
 
 class TaxiSimulator:

@@ -5,6 +5,10 @@ import pandas as pd
 
 from .utils import generate_dummy, convert_to_datetime, get_distance
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -14,6 +18,7 @@ class RewardModelException(Exception):
 
 class RewardModel:
     def __init__(self):
+        logger.info("Initialize reward model")
         with open(os.path.join(cur_dir, 'src', 'model.pickle'), 'rb') as f:
             self.model = pickle.load(f)
         with open(os.path.join(cur_dir, 'src', 'features.pickle'), 'rb') as f:

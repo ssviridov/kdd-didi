@@ -10,6 +10,10 @@ from map import Map
 from models.order_generator import OrderGenerator
 from models.cancel_model import CancelModel
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Environment:
     VALID_REPOSITION_TIME = 300
@@ -18,6 +22,7 @@ class Environment:
     STEP_UNIT = 1
 
     def __init__(self, day_of_week: int, agent: Agent):
+        logger.info("Create environment")
         self.day_of_week = day_of_week
         self.t = 0
         self.hours = 0
@@ -40,6 +45,7 @@ class Environment:
         self.cancel_model = CancelModel()
 
     def update_current_time(self, current_seconds):
+        logger.info(f"[{current_seconds}s] - simulation time")
         self.t = current_seconds
         self.hours = current_seconds // (60 * 60)
         self.minutes = (current_seconds - self.hours * 60 * 60) // 60
@@ -50,6 +56,7 @@ class Environment:
         return int(dt.datetime.combine(dt.date.today(), dt.time(self.hours, self.minutes, self.seconds)).timestamp())
 
     def reposition_actions(self):
+        logger.info("Start reposition action")
         all_idle_drivers = self.drivers_collection.get_drivers('idle')
 
         # Valid for Repositioning & Agent Repositioning Selection models
@@ -63,20 +70,24 @@ class Environment:
         self._idle_movement(idle_drivers)
 
     def generate_orders(self):
+        logger.info("Start generating orders for day")
         order_gen = OrderGenerator()
         self.df_orders = order_gen.generate_orders(weekday=self.day_of_week)
 
     def get_orders_for_second(self):
+        logger.info("Get orders for this simulation second")
         orders = self.df_orders.loc[
             self.df_orders["order_time"] == dt.timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds),
             ["pickup_hex", "dropoff_hex"]]
         self.orders_collection.add_orders(orders)
 
     def balancing_drivers(self):
+        logger.info("Start making drivers online/offline")
         # TODO balance number of drivers in system by deleting and generating new ones
         pass
 
     def dispatching_actions(self):
+        logger.info("Start dispatch action")
         all_idle_drivers = self.drivers_collection.get_dispatching_drivers()
         orders = self.orders_collection.get_orders(status="unassigned")
 
@@ -85,6 +96,7 @@ class Environment:
         self._dispatching(orders=orders, drivers=all_idle_drivers)
 
     def cancel_orders(self):
+        logger.info("Start cancelling orders")
         orders = self.orders_collection.get_orders(status="assigned")
         if not orders:
             return None
@@ -95,6 +107,7 @@ class Environment:
         self.orders_collection.cancel_orders(orders_to_cancel)
 
     def move_drivers(self):
+        logger.info("Start moving drivers")
         self.drivers_collection.move_drivers()
 
     def _repositioning(self, drivers_for_reposition: list):
