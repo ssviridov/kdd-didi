@@ -35,7 +35,7 @@ class Environment:
         # Somehow calculate number of drivers for init
         self.drivers_collection.generate_drivers(n_drivers=100)
 
-        self.df_orders = self._generate_orders_for_day()
+        self.df_orders = None
 
         self.cancel_model = CancelModel()
 
@@ -62,11 +62,11 @@ class Environment:
         # Idle Drivers Movement Model (just assigning Driver.next_idle_location without move())
         self._idle_movement(idle_drivers)
 
-    def _generate_orders_for_day(self):
-        order_gen = OrderGenerator()
-        return order_gen.generate_orders(weekday=self.day_of_week)
-
     def generate_orders(self):
+        order_gen = OrderGenerator()
+        self.df_orders = order_gen.generate_orders(weekday=self.day_of_week)
+
+    def get_orders_for_second(self):
         orders = self.df_orders.loc[
             self.df_orders["order_time"] == dt.timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds),
             ["pickup_hex", "dropoff_hex"]]
@@ -85,7 +85,6 @@ class Environment:
         self._dispatching(orders=orders, drivers=all_idle_drivers)
 
     def cancel_orders(self):
-        # TODO use order cancellation model for cancelling order
         orders = self.orders_collection.get_orders(status="assigned")
         if not orders:
             return None
