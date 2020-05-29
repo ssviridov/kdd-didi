@@ -7,6 +7,7 @@ from driver import DriversCollection
 from order import OrdersCollection
 from agent import Agent
 from map import Map
+from utils import prepare_dispatching_request, handle_dispatching_response
 from models.order_generator import OrderGenerator
 from models.cancel_model import CancelModel
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Environment:
     VALID_REPOSITION_TIME = 300
+    MAX_PICKUP_DISTANCE = 2000
     IDLE_SPEED_M_PER_S = 3
     REPO_SPEED_M_PER_S = 3
     PICKUP_SPEED_M_PER_S = 3
@@ -127,16 +129,9 @@ class Environment:
         self.drivers_collection.idle_movement(model_response)
 
     def _dispatching(self, orders, drivers):
-        # TODO: prepare request for agent.dispatch()
-        prepared_request = [
-            {"order_id": order.order_id, "driver_id": driver.driver_id, "reward_units": random.random()}
-            for order, driver in itertools.product(orders, drivers)]
+        prepared_request = prepare_dispatching_request(env=self, drivers=drivers, orders=orders)
         agent_response = self.agent.dispatch(prepared_request)
-        for r in agent_response:
-            order = self.orders_collection.get_order_by_id(r["order_id"])
-            driver = self.drivers_collection.get_by_driver_id(r["driver_id"])
-            driver.take_order(order, 0, 0, 0, random.randint(0, 1999))
-        # TODO: assign orders to vehicles and vehicles to orders, delete unassigned orders
+        handle_dispatching_response(env=self, agent_request=prepared_request, agent_response=agent_response)
 
 # if __name__ == '__main__':
 #     a = Agent()
