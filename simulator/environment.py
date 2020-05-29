@@ -15,6 +15,7 @@ class Environment:
     VALID_REPOSITION_TIME = 300
     IDLE_SPEED_M_PER_S = 3
     REPO_SPEED_M_PER_S = 3
+    PICKUP_SPEED_M_PER_S = 3
     STEP_UNIT = 1
 
     def __init__(self, day_of_week: int, agent: Agent):
