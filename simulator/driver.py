@@ -84,7 +84,7 @@ class Driver:
         # logger.info(f"Start initializing driver")
         self.env = env
         self.driver_id = next(self.newid)
-        self.driver_location = self.env.map.sample_driver_location()
+        self.driver_hex, self.driver_location = self.env.map.sample_driver_location()
         self.driver_reward = 0
         self.status = 'idle'
         self.order = None
@@ -118,7 +118,8 @@ class Driver:
             if self.env.timestamp == self.order.order_finish_timestamp:
                 self.driver_reward += self.order.reward
                 self.env.total_reward += self.order.reward
-                self.driver_location = self.order.finish_location
+                self.driver_location = self.order.order_finish_location
+                self.driver_hex = self.order.finish_hex
                 self.env.orders_collection.cancel_orders([self.order])
 
     def _move(self):
