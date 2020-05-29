@@ -11,13 +11,18 @@ logger = logging.getLogger(__name__)
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 path_df_lambda = os.path.join(cur_dir, "src", "avg_hourly_orders.csv")
 path_df_destination = os.path.join(cur_dir, "src", "correspondence_frequency.csv")
+path_hexes = os.path.join(cur_dir, "..", "..", "data", "hexes.csv")
 
 
 class OrderGenerator:
-    def __init__(self, path_to_df_lambda=path_df_lambda, path_to_df_probs=path_df_destination, random_seed=None):
+    def __init__(self, path_df_lambda=path_df_lambda, path_df_probs=path_df_destination, path_hexes=path_hexes,
+                 random_seed=None):
         logger.info("Initialize order generator")
-        self.df_lambda = pd.read_csv(path_to_df_lambda, sep=";").dropna()
-        self.df_probs = pd.read_csv(path_to_df_probs, sep=";")
+        self.df_lambda = pd.read_csv(path_df_lambda, sep=";").dropna()
+        self.df_probs = pd.read_csv(path_df_probs, sep=";").dropna()
+        hexes = pd.read_csv(path_hexes)
+        self.df_probs = self.df_probs.loc[(self.df_probs["pickup_grid"].isin(hexes["hex"]))
+                                          & (self.df_probs["dropoff_grid"].isin(hexes["hex"]))]
         if random_seed:
             np.random.seed(random_seed)
 
