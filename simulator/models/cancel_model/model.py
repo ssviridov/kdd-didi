@@ -8,16 +8,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
-data_path = os.path.join(cur_dir, "src", "cancel_probs_distr.csv")
+data_dir = os.path.join(cur_dir, "src")
 
 
 class CancelModel:
-    def __init__(self, bw=0.005, data_path=data_path):
+    def __init__(self, bw=0.005, data_dir=data_dir, weekday=1):
         """
         data_path : path to DataFrame - Should contain only prob_cols!!!
         """
         logger.info("Initialize cancellation model")
-        df = pd.read_csv(data_path)
+        data_path = os.path.join(data_dir, f"cancel_probs_day{weekday}.csv.gz")
+        df = pd.read_csv(data_path, compression="gzip")
         data = df.values.T
         self.kernel = stats.gaussian_kde(data, bw_method=bw)
 

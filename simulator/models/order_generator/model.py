@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 path_df_lambda = os.path.join(cur_dir, "src", "avg_hourly_orders.csv")
-path_df_destination = os.path.join(cur_dir, "src", "correspondence_frequency.csv")
+path_df_destination = os.path.join(cur_dir, "src", "correspondence_frequency.csv.gz")
 path_hexes = os.path.join(cur_dir, "..", "..", "data", "hexes.csv")
 
 
@@ -19,7 +19,7 @@ class OrderGenerator:
                  random_seed=None):
         logger.info("Initialize order generator")
         self.df_lambda = pd.read_csv(path_df_lambda, sep=";").dropna()
-        self.df_probs = pd.read_csv(path_df_probs, sep=";").dropna()
+        self.df_probs = pd.read_csv(path_df_probs, compression="gzip").dropna()
         hexes = pd.read_csv(path_hexes)
         self.df_probs = self.df_probs.loc[(self.df_probs["pickup_grid"].isin(hexes["hex"]))
                                           & (self.df_probs["dropoff_grid"].isin(hexes["hex"]))]
