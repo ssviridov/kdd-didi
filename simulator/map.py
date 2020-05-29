@@ -4,6 +4,10 @@ import os
 import pickle
 import networkx as nx
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 

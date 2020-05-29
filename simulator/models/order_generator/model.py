@@ -4,6 +4,10 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 path_df_lambda = os.path.join(cur_dir, "src", "avg_hourly_orders.csv")
 path_df_destination = os.path.join(cur_dir, "src", "correspondence_frequency.csv")
@@ -11,6 +15,7 @@ path_df_destination = os.path.join(cur_dir, "src", "correspondence_frequency.csv
 
 class OrderGenerator:
     def __init__(self, path_to_df_lambda=path_df_lambda, path_to_df_probs=path_df_destination, random_seed=None):
+        logger.info("Initialize order generator")
         self.df_lambda = pd.read_csv(path_to_df_lambda, sep=";").dropna()
         self.df_probs = pd.read_csv(path_to_df_probs, sep=";")
         if random_seed:
