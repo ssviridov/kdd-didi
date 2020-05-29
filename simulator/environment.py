@@ -39,7 +39,7 @@ class Environment:
 
         # Init some drivers
         # Somehow calculate number of drivers for init
-        self.drivers_collection.generate_drivers(n_drivers=100)
+        self.drivers_collection.generate_drivers(n_drivers=1000)
 
         self.df_orders = None
 
