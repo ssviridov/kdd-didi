@@ -31,7 +31,7 @@ def prepare_dispatching_request(env, drivers, orders):
     pairs = list()
     for order in orders:
         order_pairs = _pairs_for_order(order, env, drivers)
-        pairs += [o for o in order_pairs if o.order_driver_distance <= env.MAX_PICKUP_DISTANCE]
+        pairs += [o for o in order_pairs if o['order_driver_distance'] <= env.MAX_PICKUP_DISTANCE]
     return pairs
 
 
