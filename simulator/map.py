@@ -25,8 +25,11 @@ class Map:
         return hexagon
 
     def generate_order_endpoints(self, start_hex, end_hex):
+        logger.info(f"Start loc start_coords")
         start_coords = self.coords_df.loc[self.coords_df.hex == start_hex]
+        logger.info(f"Start loc stop_coords")
         end_coords = self.coords_df.loc[self.coords_df.hex == end_hex]
+        logger.info(f"Start random choice")
         return np.random.choice(start_coords.coord), np.random.choice(end_coords.coord)
 
     def get_grid(self, lonlat: list):
