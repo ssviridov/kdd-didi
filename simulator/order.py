@@ -17,6 +17,7 @@ class Order:
     def __init__(self, env, start_hex, end_hex):
         self.env = env
         self.order_id = next(self.newid)
+        self.start_hex, self.finish_hex = start_hex, end_hex
         self.order_start_location, self.order_finish_location = self.env.map.generate_order_endpoints(start_hex,
                                                                                                       end_hex)
         self.status = 'unassigned'
