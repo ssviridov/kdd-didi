@@ -33,6 +33,10 @@ class Map:
         distributed_distance = np.linspace(0, distance, len(path)) * 1000 / self.env.IDLE_SPEED_M_PER_S + self.env.t
         return {i: j for i, j in zip(distributed_distance.astype(int), path)}
 
+    def calculate_distance(self, start_hex, finish_hex):
+        distance, _ = nx.single_source_dijkstra(self.graph, start_hex, finish_hex)
+        return distance
+
 # if __name__=='__main__':
 #     t = Map()
 #     print(t.get_grid(3))
