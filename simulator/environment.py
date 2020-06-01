@@ -138,6 +138,7 @@ class Environment:
 
     def _dispatching(self, orders, drivers):
         prepared_request = prepare_dispatching_request(env=self, drivers=drivers, orders=orders)
+        logger.info("Send dispatching request to Agent")
         agent_response = self.agent.dispatch(prepared_request)
         handle_dispatching_response(env=self, agent_request=prepared_request, agent_response=agent_response)
         self.datacollector.collect_dispatching(prepared_request, agent_response)
