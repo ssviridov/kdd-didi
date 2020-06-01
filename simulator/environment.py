@@ -113,7 +113,7 @@ class Environment:
 
     def _repositioning(self, drivers_for_reposition: list):
         prepared_request = dict(driver_info=[{'driver_id': d.driver_id,
-                                              'grid_id': d.driver_location} for d in drivers_for_reposition],
+                                              'grid_id': d.driver_hex} for d in drivers_for_reposition],
                                 day_of_week=self.day_of_week,
                                 timestamp=self.timestamp)
         agent_response = self.agent.reposition(prepared_request)
