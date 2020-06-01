@@ -51,17 +51,21 @@ class DriversCollection(list):
 
     def reposition(self, agent_response: list):
         # logger.info("Start repositioning drivers")
+        repositioning_data = list()
         for resp in agent_response:
             driver = self.get_by_driver_id(resp['driver_id'])
             driver.route = self.env.map.calculate_path(driver.driver_hex, resp['destination'])
             driver.status = 'reposition'
             driver.idle_time = 0
+            resp['driver_hex'] = driver.driver_hex
+            repositioning_data.append(resp)
+        self.env.datacollector.collect_repositioning(repositioning_data)
 
     def idle_movement(self, model_response: list):
         # logger.info("Start moving idle drivers")
         for resp in model_response:
             driver = self.get_by_driver_id(resp['driver_id'])
-            driver.route = self.env.map.calculate_path(driver.driver_location, resp['idle_hex'])
+            driver.route = self.env.map.calculate_path(driver.driver_hex, resp['idle_hex'])
 
     def get_dispatching_drivers(self):
         # logger.info("Start getting dispatching drivers")
@@ -127,7 +131,8 @@ class Driver:
         if not next_location:
             pass
         else:
-            self.driver_location = next_location
+            self.driver_hex = next_location
+            self.driver_location = self.env.map.get_lonlat(next_location)
             del self.route[self.env.t]
 
     def cancel_order(self):
