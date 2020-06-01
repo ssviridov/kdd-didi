@@ -22,9 +22,12 @@ class Map:
     def sample_driver_location(self):
         # TODO implement model for selecting hexagon for driver location
         hexagon = np.random.choice(self.coords_df.hex.unique())
-        hex_row = self.coords_df.loc[self.coords_df.hex == hexagon].reset_index().iloc[0]
-        lonlat = self._generate_coord(hex_row)
+        lonlat = self.get_lonlat(hexagon)
         return hexagon, lonlat
+
+    def get_lonlat(self, hexagon):
+        hex_row = self.coords_df.loc[self.coords_df.hex == hexagon].reset_index().iloc[0]
+        return self._generate_coord(hex_row)
 
     def generate_order_endpoints(self, start_hex, end_hex):
         # logger.info(f"Start loc start_coords")
