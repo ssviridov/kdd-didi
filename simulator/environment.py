@@ -7,7 +7,7 @@ from driver import DriversCollection
 from order import OrdersCollection
 from agent import Agent
 from map import Map
-from utils import prepare_dispatching_request, handle_dispatching_response
+from utils import DataCollector, prepare_dispatching_request, handle_dispatching_response
 from models.order_generator import OrderGenerator
 from models.cancel_model import CancelModel
 
@@ -24,7 +24,7 @@ class Environment:
     PICKUP_SPEED_M_PER_S = 3
     STEP_UNIT = 1
 
-    def __init__(self, day_of_week: int, agent: Agent):
+    def __init__(self, day_of_week: int, agent: Agent, db_client):
         logger.info("Create environment")
         self.day_of_week = day_of_week
         self.t = 0
@@ -47,12 +47,15 @@ class Environment:
 
         self.cancel_model = CancelModel(weekday=day_of_week)
 
+        self.datacollector = DataCollector(env=self, db_client=db_client)
+
     def update_current_time(self, current_seconds):
         logger.info(f"[{current_seconds}s] - simulation time")
         self.t = current_seconds
         self.hours = current_seconds // (60 * 60)
         self.minutes = (current_seconds - self.hours * 60 * 60) // 60
         self.seconds = current_seconds - self.hours * 60 * 60 - self.minutes * 60
+        self.datacollector.init_step_data()
 
     @property
     def timestamp(self):
@@ -80,6 +83,7 @@ class Environment:
     def get_orders_for_second(self):
         logger.info("Get orders for this simulation second")
         orders = self.d_orders.get(self.t, [])
+        self.datacollector._step_data['total']['income_orders'] = len(orders)
         self.orders_collection.add_orders(orders)
 
     def balancing_drivers(self):
@@ -94,17 +98,21 @@ class Environment:
 
         # All idle drivers all eligible for dispatching
         # Order-Driver Matching Model
-        self._dispatching(orders=orders, drivers=all_idle_drivers)
+        assigned_orders = self._dispatching(orders=orders, drivers=all_idle_drivers)
 
-    def cancel_orders(self):
+        self.cancel_orders(assigned_orders)
+
+    def cancel_orders(self, assigned_orders: list):
         logger.info("Start cancelling orders")
         orders = self.orders_collection.get_orders(status="assigned")
+        orders = [order for order in orders if order.order_id in [d['order_id'] for d in assigned_orders]]
         if not orders:
             return None
         all_probs = self.cancel_model.sample_probs(len(orders))
         idx = [int(order.order_driver_distance // 200) for order in orders]  # NOTE: 0 <= order_driver_distance < 2000
         order_probs = np.choose(idx, all_probs)
         orders_to_cancel = list(itertools.compress(orders, np.random.binomial(1, order_probs)))
+        self.datacollector.collect_cancelled(orders_to_cancel)
         self.orders_collection.cancel_orders(orders_to_cancel)
 
     def move_drivers(self):
@@ -121,17 +129,20 @@ class Environment:
 
     def _idle_movement(self, idle_drivers: list):
         prepared_request = dict(idle_driver=[{'driver_id': d.driver_id,
-                                              'driver_location': d.driver_location} for d in idle_drivers],
+                                              'driver_location': d.driver_hex} for d in idle_drivers],
                                 day_of_week=self.day_of_week,
                                 hour=self.hours)
         # TODO Use idle transition probability model for assigning next_idle_location
-        model_response = [{'driver_id': d.driver_id, 'idle_hex': d.driver_location} for d in idle_drivers]
+        model_response = [{'driver_id': d.driver_id, 'idle_hex': d.driver_hex} for d in idle_drivers]
         self.drivers_collection.idle_movement(model_response)
 
     def _dispatching(self, orders, drivers):
         prepared_request = prepare_dispatching_request(env=self, drivers=drivers, orders=orders)
         agent_response = self.agent.dispatch(prepared_request)
         handle_dispatching_response(env=self, agent_request=prepared_request, agent_response=agent_response)
+        self.datacollector.collect_dispatching(prepared_request, agent_response)
+        self.orders_collection.delete_unassigned_orders()
+        return agent_response
 
 # if __name__ == '__main__':
 #     a = Agent()
