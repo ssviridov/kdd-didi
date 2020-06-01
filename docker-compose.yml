@@ -1,0 +1,22 @@
+version: "3"
+services:
+  simcollector:
+    container_name: didi_collector
+    build:
+      context: ./
+      dockerfile: ./TaxiSimulationsCollector/Dockerfile
+    environment:
+      - MONGO_INITDB_DATABASE=simulations
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=dcdb47b163235e575652c63f1825fd86
+    volumes:
+      - ./data/mongo:/data/db
+      - ./TaxiSimulationsCollector/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - mongovolume:/data/db
+    ports:
+      - "3002:27017"
+    restart: always
+
+#volumes:
+#  mongovolume:
+#    external: true
