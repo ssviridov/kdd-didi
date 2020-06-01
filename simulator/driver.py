@@ -53,7 +53,7 @@ class DriversCollection(list):
         # logger.info("Start repositioning drivers")
         for resp in agent_response:
             driver = self.get_by_driver_id(resp['driver_id'])
-            driver.route = self.env.map.calculate_path(driver.driver_location, resp['destination'])
+            driver.route = self.env.map.calculate_path(driver.driver_hex, resp['destination'])
             driver.status = 'reposition'
             driver.idle_time = 0
 
@@ -128,7 +128,7 @@ class Driver:
             pass
         else:
             self.driver_location = next_location
-            del self.route[self.env.current_seconds]
+            del self.route[self.env.t]
 
     def cancel_order(self):
         # logger.info(f"Start cancelling order assigned to driver {self.driver_id}")
