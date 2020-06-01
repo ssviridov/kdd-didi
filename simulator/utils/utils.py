@@ -8,10 +8,7 @@ def _create_order_driver_pair(env, o, d):
     pair = dict(order_id=o.order_id, driver_id=d.driver_id, order_start_location=o.order_start_location,
                 order_finish_location=o.order_finish_location, driver_location=d.driver_location,
                 timestamp=env.timestamp, day_of_week=env.day_of_week)
-    try:
-        pair['order_driver_distance'] = get_distance(d.driver_location, o.order_start_location) * 1000
-    except:
-        print('hello')
+    pair['order_driver_distance'] = get_distance(d.driver_location, o.order_start_location) * 1000
     pair['pick_up_eta'] = pair['order_driver_distance'] / env.PICKUP_SPEED_M_PER_S
     order_duration = env.map.calculate_distance(o.start_hex, o.finish_hex) * 1000 / env.PICKUP_SPEED_M_PER_S
     pair['order_finish_timestamp'] = env.timestamp + int(pair['pick_up_eta']) + int(order_duration)
