@@ -41,7 +41,7 @@ class Environment:
 
         # Init some drivers
         # Somehow calculate number of drivers for init
-        self.drivers_collection.generate_drivers(n_drivers=1000)
+        self.drivers_collection.generate_drivers(n_drivers=10000)
 
         self.d_orders = None
 
@@ -59,7 +59,12 @@ class Environment:
 
     @property
     def timestamp(self):
-        return int(dt.datetime.combine(dt.date.today(), dt.time(self.hours, self.minutes, self.seconds)).timestamp())
+        if self.hours == 24:
+            return int(dt.datetime.combine(dt.date.today()+dt.timedelta(days=1),
+                                           dt.time(0, self.minutes, self.seconds)).timestamp())
+        else:
+            return int(dt.datetime.combine(dt.date.today(),
+                                           dt.time(self.hours, self.minutes, self.seconds)).timestamp())
 
     def reposition_actions(self):
         logger.info("Start reposition action")
