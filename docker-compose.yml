@@ -3,8 +3,8 @@ services:
   simcollector:
     container_name: didi_collector
     build:
-      context: ./
-      dockerfile: ./TaxiSimulationsCollector/Dockerfile
+      context: ./TaxiSimulationsCollector
+      dockerfile: ./Dockerfile
     environment:
       - MONGO_INITDB_DATABASE=simulations
       - MONGO_INITDB_ROOT_USERNAME=admin
@@ -12,7 +12,7 @@ services:
     volumes:
       - ./data/mongo:/data/db
       - ./TaxiSimulationsCollector/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-      - mongovolume:/data/db
+#      - mongovolume:/data/db
     ports:
       - "3002:27017"
     restart: always
