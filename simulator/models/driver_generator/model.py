@@ -44,13 +44,13 @@ class DriverGenerator:
         for h in range(24):
             cur_time = start + h * 3600
             driver_amt, lifetime = self.determine_lambdas(weekday=weekday, hour=h)
-            driver_amt = int(driver_amt)
             grids, weights = self.determine_grid_probs(weekday=weekday, hour=h)
-            t = np.random.exponential(scale=1 / driver_amt, size=driver_amt)
+            t = np.random.exponential(scale=1 / driver_amt, size=int(2 * driver_amt))
             t_cum = np.cumsum(t)
-            driver_time = [cur_time + self.hour_to_seconds(h) for h in t_cum]
-            driver_lifetime = np.random.exponential(lifetime, size=driver_amt) * 60
-            idx = np.random.choice(np.arange(grids.shape[0]), size=driver_amt, p=weights)
+            n_req = np.argmin(t_cum < 1)
+            driver_time = [cur_time + self.hour_to_seconds(h) for h in t_cum[:n_req]]
+            driver_lifetime = np.random.exponential(lifetime, size=n_req) * 60
+            idx = np.random.choice(np.arange(grids.shape[0]), size=n_req, p=weights)
             driver_grid = grids[idx]
             for k, v1, v2 in zip(driver_time, driver_grid, driver_lifetime.round()):
                 d_drivers.setdefault(k, []).append((v1, v2))
