@@ -17,10 +17,9 @@ def _create_order_driver_pair(env, o, d):
     logger.info("Get pickup eta")
     pair['pick_up_eta'] = pair['order_driver_distance'] / env.PICKUP_SPEED_M_PER_S
     logger.info("Get order duration")
-    order_duration = env.map.calculate_distance(o.start_hex, o.finish_hex) * 1000 / env.PICKUP_SPEED_M_PER_S
+    pair['distance'] = env.map.calculate_distance(o.start_hex, o.finish_hex)
+    order_duration = pair['distance'] * 1000 / env.PICKUP_SPEED_M_PER_S
     pair['order_finish_timestamp'] = env.timestamp + int(pair['pick_up_eta']) + int(order_duration)
-    logger.info("Get reward")
-    pair['reward_units'] = RMODEL.predict(pair)
     return pair
 
 
@@ -44,7 +43,11 @@ def prepare_dispatching_request(env, drivers, orders):
     for order in orders:
         order_pairs = _pairs_for_order(order, env, drivers)
         pairs += [o for o in order_pairs if o['order_driver_distance'] <= env.MAX_PICKUP_DISTANCE]
-    return pairs
+    if len(pairs) == 0:
+        return pairs
+    else:
+        pairs_rewards = list(RMODEL.predict_batch(pairs))
+        return [dict(reward_units=rew, **request) for rew, request in zip(pairs_rewards, pairs)]
 
 
 def handle_dispatching_response(env, agent_request, agent_response):
