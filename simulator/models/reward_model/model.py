@@ -3,7 +3,7 @@ import os
 from joblib import load
 import pandas as pd
 
-from .utils import generate_dummy, convert_to_datetime, get_distance
+from .utils import convert_to_datetime, get_distance, prepare_batch, generate_dummy
 
 import logging
 
@@ -33,7 +33,11 @@ class RewardModel:
                              'day_of_week',
                              'pick_up_eta'}
 
-    def predict(self, request):
+    def predict_batch(self, request_list: list):
+        prepared_request = prepare_batch(request_list)
+        return self.model.predict(prepared_request[self.features].values).flatten()
+
+    def predict(self, request: dict):
         prepared_request = self._prepare_request(request)
         return self.model.predict(prepared_request[self.features].values.reshape(1, -1))[0][0]
 
