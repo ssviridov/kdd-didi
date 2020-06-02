@@ -9,6 +9,7 @@ from agent import Agent
 from map import Map
 from utils import DataCollector, prepare_dispatching_request, handle_dispatching_response
 from models.order_generator import OrderGenerator
+from models.driver_generator import DriverGenerator
 from models.cancel_model import CancelModel
 
 import logging
@@ -39,11 +40,8 @@ class Environment:
         self.agent = agent
         self.total_reward = 0
 
-        # Init some drivers
-        # Somehow calculate number of drivers for init
-        self.drivers_collection.generate_drivers(n_drivers=10000)
-
         self.d_orders = None
+        self.d_drivers = None
 
         self.cancel_model = CancelModel(weekday=day_of_week)
 
@@ -60,7 +58,7 @@ class Environment:
     @property
     def timestamp(self):
         if self.hours == 24:
-            return int(dt.datetime.combine(dt.date.today()+dt.timedelta(days=1),
+            return int(dt.datetime.combine(dt.date.today() + dt.timedelta(days=1),
                                            dt.time(0, self.minutes, self.seconds)).timestamp())
         else:
             return int(dt.datetime.combine(dt.date.today(),
@@ -85,6 +83,11 @@ class Environment:
         order_gen = OrderGenerator()
         self.d_orders = order_gen.generate_orders(weekday=self.day_of_week)
 
+    def generate_drivers(self):
+        logger.info("Start generating drivers for day")
+        driver_gen = DriverGenerator()
+        self.d_drivers = driver_gen.generate_drivers(weekday=self.day_of_week)
+
     def get_orders_for_second(self):
         logger.info("Get orders for this simulation second")
         orders = self.d_orders.get(self.t, [])
@@ -93,8 +96,13 @@ class Environment:
 
     def balancing_drivers(self):
         logger.info("Start making drivers online/offline")
-        # TODO balance number of drivers in system by deleting and generating new ones
-        pass
+        # generating new drivers
+        drivers = self.d_drivers.get(self.t, [])
+        self.datacollector._step_data['total']['income_drivers'] = len(drivers)
+        self.drivers_collection.add_drivers(drivers)
+        # deleting old drivers
+        deleted_amt = self.drivers_collection.delete_drivers()
+        self.datacollector._step_data['total']['outcome_drivers'] = deleted_amt
 
     def dispatching_actions(self):
         logger.info("Start dispatch action")

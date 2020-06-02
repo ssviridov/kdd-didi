@@ -27,6 +27,20 @@ class DriversCollection(list):
         for _ in range(n_drivers):
             self.append(Driver(env=self.env))
 
+    def delete_drivers(self):
+        # logger.info("Start deleting drivers")
+        deleted_drivers = 0
+        for driver in self:
+            if (driver.status != 'assigned') and (driver.deadline <= self.env.t):
+                self.remove(driver)
+                deleted_drivers += 1
+        return deleted_drivers
+
+    def add_drivers(self, drivers: list):
+        # logger.info("Start adding drivers")
+        for start_hex, lifetime in drivers:
+            self.append(Driver(env=self.env, start_hex=start_hex, lifetime=lifetime))
+
     def move_drivers(self):
         # logger.info("Start moving drivers")
         for driver in self:
@@ -84,15 +98,17 @@ class Driver:
     newid = itertools.count()
     status_list = ['idle', 'assigned', 'reposition']
 
-    def __init__(self, env):
+    def __init__(self, env, start_hex=None, lifetime=None):
         # logger.info(f"Start initializing driver")
         self.env = env
         self.driver_id = next(self.newid)
-        self.driver_hex, self.driver_location = self.env.map.sample_driver_location()
+        self.driver_hex, self.driver_location = self.env.map.sample_driver_location(start_hex=start_hex)
         self.driver_reward = 0
+        if lifetime is not None:
+            self.deadline = lifetime + self.env.t
         self.status = 'idle'
         self.order = None
-        self.route = {self.env.t: self.driver_location}
+        self.route = {}
         self.idle_time = abs(int(np.random.normal(300, 200)))
 
     def take_order(self, order_object, reward: float, pick_up_eta: float,

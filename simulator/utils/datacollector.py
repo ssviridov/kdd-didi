@@ -24,6 +24,8 @@ class DataCollector:
                                         total_idle_drivers=len(self.env.drivers_collection.get_drivers(status='idle')),
                                         total_assigned=len(self.env.drivers_collection.get_drivers(status='assigned')),
                                         income_orders=0,
+                                        income_drivers=0,
+                                        outcome_drivers=0,
                                         assigned_orders=0,
                                         cancelled_orders=0,
                                         reward_earned=0,

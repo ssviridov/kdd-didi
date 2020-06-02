@@ -26,6 +26,7 @@ class TaxiSimulator:
             self.db_client(simulation_name)
         env = Environment(day_of_week=day_of_week, agent=agent, db_client=self.db_client)
         env.generate_orders()
+        env.generate_drivers()
         for sec in range(1, self.day_seconds + 1):
             env.update_current_time(current_seconds=sec)
             if sec % 100 == 0:
