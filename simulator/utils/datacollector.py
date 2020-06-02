@@ -51,7 +51,7 @@ class DataCollector:
         self._step_data['dispatching']['assigned'] = assigned
         assigned_ids = [i['order_id'] for i in assigned]
         self._step_data['total']['reward_earned'] = np.sum([i.reward for i in self.env.orders_collection
-                                                     if i.order_id in assigned_ids])
+                                                            if i.order_id in assigned_ids])
         self._step_data['total']['assigned_orders'] = len(assigned_ids)
 
     def collect_cancelled(self, cancelled_list: list):
