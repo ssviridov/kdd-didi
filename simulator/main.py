@@ -42,4 +42,3 @@ class TaxiSimulator:
 
     def get_simulation(self, name: str):
         return self.db_client.read_simulation(name)
-
