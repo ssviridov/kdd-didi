@@ -1,9 +1,14 @@
+import os
 import pickle
 import random
 
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+data_file = os.path.join(cur_dir, "data", "idle_trans_data.pickle")
+
+
 class IdleTransitionModel:
 
-    def __init__(self, data_file = 'data/idle_trans_data.pickle'):
+    def __init__(self, data_file=data_file):
         try:
             with open(data_file, 'rb') as f:
                 self.idle_trans_data = pickle.load(f)
