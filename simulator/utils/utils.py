@@ -1,5 +1,6 @@
 from models import RewardModel
 from geopy.distance import geodesic
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,3 +61,19 @@ def handle_dispatching_response(env, agent_request, agent_response):
         driver.take_order(order, reward=order_info['reward_units'], pick_up_eta=order_info['pick_up_eta'],
                           order_finish_timestamp=order_info['order_finish_timestamp'],
                           order_driver_distance=order_info['order_driver_distance'])
+
+
+class TimeFilter(logging.Filter):
+
+    def filter(self, record):
+        try:
+            last = self.last
+        except AttributeError:
+            last = record.relativeCreated
+
+        delta = (record.relativeCreated - last) / 1000
+
+        record.relative = f'{delta:.3f}'
+
+        self.last = record.relativeCreated
+        return True
