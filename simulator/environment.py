@@ -143,7 +143,7 @@ class Environment:
         self.drivers_collection.reposition(agent_response)
 
     def _idle_movement(self, idle_drivers: list):
-        prepared_request = dict(idle_driver=[{'driver_id': d.driver_id,
+        prepared_request = dict(idle_drivers=[{'driver_id': d.driver_id,
                                               'driver_location': d.driver_hex} for d in idle_drivers],
                                 day_of_week=self.day_of_week,
                                 hour=self.hours)
