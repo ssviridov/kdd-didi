@@ -11,6 +11,7 @@ from utils import DataCollector, prepare_dispatching_request, handle_dispatching
 from models.order_generator import OrderGenerator
 from models.driver_generator import DriverGenerator
 from models.cancel_model import CancelModel
+from models.idle_transition import IdleTransitionModel
 
 import logging
 
@@ -46,6 +47,7 @@ class Environment:
         self.cancel_model = CancelModel(weekday=day_of_week)
 
         self.datacollector = DataCollector(env=self, db_client=db_client)
+        self.idle_trans_model = IdleTransitionModel()
 
     def update_current_time(self, current_seconds):
         logger.info(f"[{current_seconds}s] - simulation time")
@@ -145,8 +147,7 @@ class Environment:
                                               'driver_location': d.driver_hex} for d in idle_drivers],
                                 day_of_week=self.day_of_week,
                                 hour=self.hours)
-        # TODO Use idle transition probability model for assigning next_idle_location
-        model_response = [{'driver_id': d.driver_id, 'idle_hex': d.driver_hex} for d in idle_drivers]
+        model_response = self.idle_trans_model.get_driver_idle_transition(prepared_request)
         self.drivers_collection.idle_movement(model_response)
 
     def _dispatching(self, orders, drivers):
