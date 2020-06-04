@@ -19,14 +19,6 @@ class Map:
 
         self.coords_df = pd.read_csv(os.path.join(cur_dir, 'data', 'coords_hex.csv'), sep=';')
 
-    def sample_driver_location(self, start_hex):
-        if start_hex is None:
-            hexagon = np.random.choice(self.coords_df.hex.unique())
-        else:
-            hexagon = start_hex
-        lonlat = self.get_lonlat(hexagon)
-        return hexagon, lonlat
-
     def get_lonlat(self, hexagon):
         hex_row = self.coords_df.loc[self.coords_df.hex == hexagon].reset_index().iloc[0]
         return self._generate_coord(hex_row)
