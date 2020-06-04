@@ -9,15 +9,15 @@ RMODEL = RewardModel()
 
 
 def _create_order_driver_pair(env, o, d):
-    logger.info("Prepare pair for order and driver")
+    # logger.info("Prepare pair for order and driver")
     pair = dict(order_id=o.order_id, driver_id=d.driver_id, order_start_location=o.order_start_location,
                 order_finish_location=o.order_finish_location, driver_location=d.driver_location,
                 timestamp=env.timestamp, day_of_week=env.day_of_week)
-    logger.info("Get distance")
+    # logger.info("Get distance")
     pair['order_driver_distance'] = get_distance(d.driver_location, o.order_start_location) * 1000
-    logger.info("Get pickup eta")
+    # logger.info("Get pickup eta")
     pair['pick_up_eta'] = pair['order_driver_distance'] / env.PICKUP_SPEED_M_PER_S
-    logger.info("Get order duration")
+    # logger.info("Get order duration")
     pair['distance'] = env.map.calculate_distance(o.start_hex, o.finish_hex)
     order_duration = pair['distance'] * 1000 / env.PICKUP_SPEED_M_PER_S
     pair['order_finish_timestamp'] = env.timestamp + int(pair['pick_up_eta']) + int(order_duration)

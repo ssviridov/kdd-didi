@@ -1,9 +1,11 @@
 import os
 import pickle
 import random
+import pandas as pd
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 data_file = os.path.join(cur_dir, "data", "idle_trans_data.pickle")
+path_hexes = os.path.join(cur_dir, "..", "..", "data", "hexes.csv")
 
 
 class IdleTransitionModel:
@@ -15,6 +17,10 @@ class IdleTransitionModel:
                 self.idle_trans_data = pickle.load(f)
         except pickle.PickleError:
             raise RuntimeError("Can't load data with idle transitions")
+        hexes = pd.read_csv(path_hexes)
+        hex_set = set(hexes["hex"])
+        self.idle_trans_data = {k: v for k, v in self.idle_trans_data.items() if
+                                (k.split("_")[0] in hex_set) and (v["h"] in hex_set)}
 
     def get_driver_idle_transition(self, driver_data):
         driver_transitions = []

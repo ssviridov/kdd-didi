@@ -17,6 +17,9 @@ class Map:
         with open(os.path.join(cur_dir, 'data', 'hex_graph.pickle'), 'rb') as f:
             self.graph = pickle.load(f)
 
+        with open(os.path.join(cur_dir, 'data', 'd_paths.pickle'), 'rb') as f:
+            self.d_paths = pickle.load(f)
+
         self.coords_df = pd.read_csv(os.path.join(cur_dir, 'data', 'coords_hex.csv'), sep=';')
 
     def get_lonlat(self, hexagon):
@@ -34,12 +37,18 @@ class Map:
         return start_location, end_location
 
     def calculate_path(self, start_hex, destination_hex):
-        distance, path = nx.single_source_dijkstra(self.graph, start_hex, destination_hex)
+        try:
+            distance, path = self.d_paths[(start_hex, destination_hex)]
+        except KeyError:
+            distance, path = nx.single_source_dijkstra(self.graph, start_hex, destination_hex)
         distributed_distance = np.linspace(0, distance, len(path)) * 1000 / self.env.IDLE_SPEED_M_PER_S + self.env.t
         return {i: j for i, j in zip(distributed_distance.astype(int), path)}
 
     def calculate_distance(self, start_hex, finish_hex):
-        distance, _ = nx.single_source_dijkstra(self.graph, start_hex, finish_hex)
+        try:
+            distance, _ = self.d_paths[(start_hex, finish_hex)]
+        except KeyError:
+            distance, _ = nx.single_source_dijkstra(self.graph, start_hex, finish_hex)
         return distance
 
     @staticmethod
