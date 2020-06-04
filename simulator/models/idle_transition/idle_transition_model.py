@@ -8,7 +8,8 @@ data_file = os.path.join(cur_dir, "data", "idle_trans_data.pickle")
 
 class IdleTransitionModel:
 
-    def __init__(self, data_file=data_file):
+    def __init__(self, data_file=data_file, random_seed=2020):
+        random.seed(random_seed)
         try:
             with open(data_file, 'rb') as f:
                 self.idle_trans_data = pickle.load(f)
