@@ -33,6 +33,7 @@ class TaxiSimulator:
                 env.reposition_actions()
             env.get_orders_for_second()
             env.balancing_drivers()
+            env.idle_movement()
             if sec % 2 == 0:
                 env.dispatching_actions()
             env.move_drivers()

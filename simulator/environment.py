@@ -78,7 +78,14 @@ class Environment:
         self._repositioning(repositioning_drivers)
 
         # Idle Drivers Movement Model (just assigning Driver.next_idle_location without move())
+        # self._idle_movement(idle_drivers)
+
+    def idle_movement(self):
+        logger.info("Idle movement")
+        all_idle_drivers = self.drivers_collection.get_drivers('idle')
+        idle_drivers = [i for i in all_idle_drivers if not i.route]
         self._idle_movement(idle_drivers)
+
 
     def generate_orders(self):
         logger.info("Start generating orders for day")
