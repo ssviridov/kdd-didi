@@ -1,6 +1,7 @@
 import itertools
 import random
 import numpy as np
+from datetime import datetime as dt
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,8 @@ class DriversCollection(list):
         deleted_drivers = 0
         for driver in self:
             if (driver.status != 'assigned') and (driver.deadline <= self.env.t):
+                driver.update_trajectory('idle')
+                self.env.datacollector.collect_trajectory(driver)
                 self.remove(driver)
                 deleted_drivers += 1
         return deleted_drivers
@@ -80,10 +83,11 @@ class DriversCollection(list):
         for resp in model_response:
             driver = self.get_by_driver_id(resp['driver_id'])
             driver.route = self.env.map.calculate_path(driver.driver_hex, resp['idle_hex'])
+            driver.update_trajectory('idle')
 
     def get_dispatching_drivers(self):
         # logger.info("Start getting dispatching drivers")
-        return self.get_drivers(status='idle') + self.get_drivers(status='reposition')
+        return [i for i in self if i.status != 'assigned']
 
     def get_by_driver_id(self, driver_id):
         # logger.info("Start get driver by id")
@@ -98,26 +102,26 @@ class Driver:
     newid = itertools.count()
     status_list = ['idle', 'assigned', 'reposition']
 
-    def __init__(self, env, start_hex=None, lifetime=None):
+    def __init__(self, env, start_hex, lifetime=None):
         # logger.info(f"Start initializing driver")
         self.env = env
         self.driver_id = next(self.newid)
-        self.driver_hex, self.driver_location = self.env.map.sample_driver_location(start_hex=start_hex)
+        self.driver_hex = start_hex
+        self.driver_location = self.env.map.get_lonlat(start_hex)
         self.driver_reward = 0
-        if lifetime is not None:
-            self.deadline = lifetime + self.env.t
+        self.born = self.env.t
+        self.deadline = lifetime + self.env.t
         self.status = 'idle'
         self.order = None
         self.route = {}
         self.idle_time = abs(int(np.random.normal(300, 200)))
+        self.trajectory = []
 
     def take_order(self, order_object, reward: float, pick_up_eta: float,
                    order_finish_timestamp: int, order_driver_distance: float):
         # logger.info(f"Start taking order {order_object.order_id} by driver {self.driver_id}")
         if self.status == 'assigned':
             raise DriverException(f'Driver {self.driver_id} already assigned to order {self.order.order_id}')
-        elif self.status == 'not available':
-            raise DriverException(f'Driver {self.driver_id} is not available at the moment')
         else:
             order_object.assigning(vehicle=self, reward=reward, pick_up_eta=pick_up_eta,
                                    order_finish_timestamp=order_finish_timestamp,
@@ -125,6 +129,7 @@ class Driver:
             self.order = order_object
             self.status = 'assigned'
             self.idle_time = 0
+            self.update_trajectory('assigned')
 
     def move(self):
         # logger.info(f"Start moving driver {self.driver_id}")
@@ -140,7 +145,7 @@ class Driver:
                 self.env.total_reward += self.order.reward
                 self.driver_location = self.order.order_finish_location
                 self.driver_hex = self.order.finish_hex
-                self.env.orders_collection.cancel_orders([self.order])
+                self.env.orders_collection.cancel_orders([self.order], finish=True)
 
     def _move(self):
         next_location = self.route.get(self.env.t)
@@ -151,8 +156,34 @@ class Driver:
             self.driver_location = self.env.map.get_lonlat(next_location)
             del self.route[self.env.t]
 
-    def cancel_order(self):
+    def update_trajectory(self, task_type: str):
+        if task_type == 'idle':
+            self.trajectory.append({'t': self.env.t,
+                                    'status': self.status,
+                                    'hex': self.driver_hex,
+                                    'route_length': self.route,
+                                    'reward': 0})
+        if task_type == 'assigned':
+            order_finish = dt.fromtimestamp(self.order.order_finish_timestamp)
+            order_finish_seconds = order_finish.hour*60*60 + order_finish.minute*60 + order_finish.second
+            self.trajectory.extend([{'t': self.env.t,
+                                     'status': self.status + '_' + str(self.order.order_id),
+                                     'hex': self.driver_hex,
+                                     'reward': self.order.reward},
+                                    {'t': int(self.env.t + self.order.pick_up_eta),
+                                     'status': self.status + '_' + str(self.order.order_id),
+                                     'hex': self.order.start_hex,
+                                     'reward': self.order.reward},
+                                    {'t': order_finish_seconds,
+                                     'status': self.status + '_' + str(self.order.order_id),
+                                     'hex': self.order.finish_hex,
+                                     'reward': self.order.reward}])
+
+    def cancel_order(self, finish=False):
         # logger.info(f"Start cancelling order assigned to driver {self.driver_id}")
         if self.status == 'assigned':
+            if not finish:
+                traj_status = self.status + '_' + str(self.order.order_id)
+                self.trajectory = [i for i in self.trajectory if i['status'] != traj_status]
             self.order = None
             self.status = 'idle'
