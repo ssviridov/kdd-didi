@@ -34,6 +34,7 @@ class DataCollector:
                                               assigned=list(),
                                               cancelled=list())
         self._step_data['repositioning'] = list()
+        self._step_data['trajectories'] = list()
 
     def write_simulation_step(self):
         self._step_data['total']['total_drivers'] = len(self.env.drivers_collection)
@@ -49,18 +50,24 @@ class DataCollector:
         self._step_data['total'][key] = value
 
     def collect_dispatching(self, request: list, assigned: list):
-        self._step_data['dispatching']['request'] = request
-        self._step_data['dispatching']['assigned'] = assigned
+        # self._step_data['dispatching']['request'] = request
+        # self._step_data['dispatching']['assigned'] = assigned
         assigned_ids = [i['order_id'] for i in assigned]
         self._step_data['total']['reward_earned'] = np.sum([i.reward for i in self.env.orders_collection
                                                             if i.order_id in assigned_ids])
         self._step_data['total']['assigned_orders'] = len(assigned_ids)
 
     def collect_cancelled(self, cancelled_list: list):
-        self._step_data['dispatching']['cancelled'] = [i.order_id for i in cancelled_list]
+        # self._step_data['dispatching']['cancelled'] = [i.order_id for i in cancelled_list]
         self._step_data['total']['cancelled_orders'] = len(cancelled_list)
         self._step_data['total']['reward_cancelled'] = np.sum([i.reward for i in cancelled_list])
         self._step_data['total']['reward_earned'] -= self._step_data['total']['reward_cancelled']
 
     def collect_repositioning(self, repositioning_list):
         self._step_data['repositioning'] = repositioning_list
+
+    def collect_trajectory(self, driver):
+        self._step_data['trajectories'].append({'driver_id': driver.driver_id,
+                                                'born': driver.born,
+                                                'died': driver.deadline,
+                                                'trajectory': driver.trajectory})
