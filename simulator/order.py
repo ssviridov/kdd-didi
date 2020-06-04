@@ -44,9 +44,9 @@ class Order:
         self.order_driver_distance = order_driver_distance
         self.status = 'assigned'
 
-    def cancel(self):
+    def cancel(self, finish=False):
         # logger.info(f"Start cancelling order {self.order_id}")
-        self.vehicle.cancel_order()
+        self.vehicle.cancel_order(finish)
 
 
 class OrdersCollection(list):
@@ -72,7 +72,7 @@ class OrdersCollection(list):
             if order.status == 'unassigned':
                 self.remove(order)
 
-    def cancel_orders(self, orders_list: list):
+    def cancel_orders(self, orders_list: list, finish=False):
         for order in orders_list:
-            order.cancel()
+            order.cancel(finish)
             self.remove(order)
