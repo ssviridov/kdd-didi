@@ -23,17 +23,12 @@ class DriversCollection(list):
         self.env = env
         super().__init__()
 
-    def generate_drivers(self, n_drivers: int):
-        # logger.info("Start generating drivers")
-        for _ in range(n_drivers):
-            self.append(Driver(env=self.env))
-
     def delete_drivers(self):
         # logger.info("Start deleting drivers")
         deleted_drivers = 0
         for driver in self:
             if (driver.status != 'assigned') and (driver.deadline <= self.env.t):
-                driver.update_trajectory('idle')
+                driver.update_trajectory('idle', terminal_state=True)
                 self.env.datacollector.collect_trajectory(driver)
                 self.remove(driver)
                 deleted_drivers += 1
@@ -115,6 +110,8 @@ class Driver:
         self.order = None
         self.route = {}
         self.idle_time = abs(int(np.random.normal(300, 200)))
+        self._sample_start = None
+        self._sample_end = None
         self.trajectory = []
 
     def take_order(self, order_object, reward: float, pick_up_eta: float,
@@ -156,34 +153,62 @@ class Driver:
             self.driver_location = self.env.map.get_lonlat(next_location)
             del self.route[self.env.t]
 
-    def update_trajectory(self, task_type: str):
+    def update_trajectory(self, task_type: str, terminal_state=False):
+        done = int(terminal_state)
         if task_type == 'idle':
-            self.trajectory.append({'t': self.env.t,
-                                    'status': self.status,
-                                    'hex': self.driver_hex,
-                                    'route_length': self.route,
-                                    'reward': 0})
+            # if first sample or sample after order completion
+            if not self._sample_start:
+                self._sample_start = dict(t_start=self.env.t, day_of_week_start=self.env.day_of_week,
+                                          status_start=self.status, hex_start=self.driver_hex,
+                                          route_length_start=self.route, reward_start=0, done_start=done)
+                # if first point is terminal (e.g. short life or death after order completion)
+                if terminal_state:
+                    self._sample_end = {k.replace('start', 'end'): v for k, v in self._sample_start.items()}
+                    if len(self.trajectory) == 0:
+                        self.trajectory.append(**self._sample_start, **self._sample_end)
+                    else:
+                        last_sample_end = [i for i in self.trajectory
+                                           if i['t_end'] == max([i['t_end'] for i in self.trajectory])][0]
+                        self._sample_start = {k.replace('end', 'start'): v for k, v in last_sample_end.items()
+                                              if 'start' not in k}
+                        self.trajectory.append({**self._sample_start, **self._sample_end})
+            # is idle movement is doing nothing - don't collect it
+            elif self._sample_start['status_start'] == 'idle' and self._sample_start['hex_start'] == self.driver_hex and done == 0:
+                return
+            else:
+                self._sample_end = dict(t_end=self.env.t, day_of_week_end=self.env.day_of_week, status_end=self.status,
+                                        hex_end=self.driver_hex, route_length_end=self.route, reward_end=0,
+                                        done_end=done)
+                self.trajectory.append({**self._sample_start, **self._sample_end})
+                self._sample_start = {key.replace('end', 'start'): value for key, value in self._sample_end.items()}
+
         if task_type == 'assigned':
-            order_finish = dt.fromtimestamp(self.order.order_finish_timestamp)
-            order_finish_seconds = order_finish.hour*60*60 + order_finish.minute*60 + order_finish.second
-            self.trajectory.extend([{'t': self.env.t,
-                                     'status': self.status + '_' + str(self.order.order_id),
-                                     'hex': self.driver_hex,
-                                     'reward': self.order.reward},
-                                    {'t': int(self.env.t + self.order.pick_up_eta),
-                                     'status': self.status + '_' + str(self.order.order_id),
-                                     'hex': self.order.start_hex,
-                                     'reward': self.order.reward},
-                                    {'t': order_finish_seconds,
-                                     'status': self.status + '_' + str(self.order.order_id),
-                                     'hex': self.order.finish_hex,
-                                     'reward': self.order.reward}])
+            status = self.status + '_' + str(self.order.order_id)
+            finish_dt = dt.fromtimestamp(self.order.order_finish_timestamp)
+            finish_seconds = finish_dt.hour * 60 * 60 + finish_dt.minute * 60 + finish_dt.second
+
+            # Collect assignment
+            self._sample_end = dict(t_end=self.env.t, day_of_week_end=self.env.day_of_week, status_end=status,
+                                    hex_end=self.driver_hex, reward_end=0, done_end=done)
+            self.trajectory.append({**self._sample_start, **self._sample_end})
+
+            # Collect order completion
+            self._sample_start = {key.replace('end', 'start'): value for key, value in self._sample_end.items()}
+            self._sample_end = dict(t_end=finish_seconds, day_of_week_end=self.env.day_of_week, status_end=status,
+                                    hex_end=self.order.finish_hex, reward_end=self.order.reward, done_end=done)
+            self.trajectory.append({**self._sample_start, **self._sample_end})
+            self._sample_start = None
 
     def cancel_order(self, finish=False):
         # logger.info(f"Start cancelling order assigned to driver {self.driver_id}")
         if self.status == 'assigned':
             if not finish:
                 traj_status = self.status + '_' + str(self.order.order_id)
-                self.trajectory = [i for i in self.trajectory if i['status'] != traj_status]
+                self.trajectory = [i for i in self.trajectory if
+                                   not (i['status_start'] == traj_status and i['status_end'] == traj_status)]
+                old_start = [i for i in self.trajectory if i['status_end'] == traj_status][0]
+                self._sample_start = {k: v for k, v in old_start.items() if 'end' not in k}
+                self.trajectory = [i for i in self.trajectory if i['status_end'] != traj_status]
             self.order = None
             self.status = 'idle'
+            self.route = {}
