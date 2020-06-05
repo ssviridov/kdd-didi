@@ -165,7 +165,7 @@ class Driver:
                 if terminal_state:
                     self._sample_end = {k.replace('start', 'end'): v for k, v in self._sample_start.items()}
                     if len(self.trajectory) == 0:
-                        self.trajectory.append(**self._sample_start, **self._sample_end)
+                        self.trajectory.append({**self._sample_start, **self._sample_end})
                     else:
                         last_sample_end = [i for i in self.trajectory
                                            if i['t_end'] == max([i['t_end'] for i in self.trajectory])][0]
