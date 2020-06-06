@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 class Environment:
     VALID_REPOSITION_TIME = 300
     MAX_PICKUP_DISTANCE = 2000
-    IDLE_SPEED_M_PER_S = 3
+    IDLE_SPEED_M_PER_S = 5
     REPO_SPEED_M_PER_S = 3
-    PICKUP_SPEED_M_PER_S = 3
+    PICKUP_SPEED_M_PER_S = 8
     STEP_UNIT = 1
 
     def __init__(self, day_of_week: int, agent: Agent, db_client, random_seed=None):
