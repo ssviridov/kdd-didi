@@ -12,8 +12,10 @@ cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class Map:
-    def __init__(self, env):
+    def __init__(self, env, random_seed=None):
         self.env = env
+        if random_seed:
+            np.random.seed(random_seed)
         with open(os.path.join(cur_dir, 'data', 'hex_graph.pickle'), 'rb') as f:
             self.graph = pickle.load(f)
 

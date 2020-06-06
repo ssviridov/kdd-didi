@@ -15,16 +15,18 @@ logger = logging.getLogger(__name__)
 class TaxiSimulator:
     day_seconds = 60 * 60 * 24
 
-    def __init__(self, write_simulations_to_db=True):
+    def __init__(self, write_simulations_to_db=True, random_seed=None):
         if write_simulations_to_db:
             self.db_client = DataManager()
         else:
             self.db_client = None
 
+        self.random_seed = random_seed
+
     def simulate(self, day_of_week: int, agent: Agent, simulation_name=None):
         if self.db_client:
             self.db_client(simulation_name)
-        env = Environment(day_of_week=day_of_week, agent=agent, db_client=self.db_client)
+        env = Environment(day_of_week=day_of_week, agent=agent, db_client=self.db_client, random_seed=self.random_seed)
         env.generate_orders()
         env.generate_drivers()
         for sec in range(1, self.day_seconds + 1):
