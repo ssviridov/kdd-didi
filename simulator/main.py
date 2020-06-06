@@ -1,4 +1,5 @@
 import json
+import os
 
 from .environment import Environment
 from .agent import Agent
@@ -7,7 +8,9 @@ from .utils import DataManager
 import logging
 from logging import config
 
-with open("logging.json", 'r') as f:
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+
+with open(os.path.join(cur_dir, "logging.json"), 'r') as f:
     logging.config.dictConfig(json.load(f))
 logger = logging.getLogger(__name__)
 

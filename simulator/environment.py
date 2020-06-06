@@ -3,18 +3,17 @@ import itertools
 import random
 import numpy as np
 
-from driver import DriversCollection
-from order import OrdersCollection
-from agent import Agent
-from map import Map
-from utils import DataCollector, prepare_dispatching_request, handle_dispatching_response
-from models.order_generator import OrderGenerator
-from models.driver_generator import DriverGenerator
-from models.cancel_model import CancelModel
-from models.idle_transition import IdleTransitionModel
+from .driver import DriversCollection
+from .order import OrdersCollection
+from .agent import Agent
+from .map import Map
+from .utils import DataCollector, prepare_dispatching_request, handle_dispatching_response
+from .models.order_generator import OrderGenerator
+from .models.driver_generator import DriverGenerator
+from .models.cancel_model import CancelModel
+from .models.idle_transition import IdleTransitionModel
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 

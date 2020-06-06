@@ -9,7 +9,7 @@
     },
     "filters": {
         "time": {
-            "()": "utils.TimeFilter"
+            "()": "simulator.utils.TimeFilter"
         }
     },
     "handlers": {
