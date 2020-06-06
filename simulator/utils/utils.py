@@ -1,4 +1,4 @@
-from models import RewardModel
+from ..models import RewardModel
 from geopy.distance import geodesic
 from datetime import datetime
 import logging
