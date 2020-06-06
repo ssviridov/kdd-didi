@@ -2,6 +2,7 @@ import itertools
 import random
 import numpy as np
 from datetime import datetime as dt
+import hashlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,7 @@ class Driver:
         self._sample_start = None
         self._sample_end = None
         self.trajectory = []
+        self._trajectory_id = self._generate_trajectory_id()
 
     def take_order(self, order_object, reward: float, pick_up_eta: float,
                    order_finish_timestamp: int, order_driver_distance: float):
@@ -158,8 +160,9 @@ class Driver:
         if task_type == 'idle':
             # if first sample or sample after order completion
             if not self._sample_start:
-                self._sample_start = dict(t_start=self.env.t, day_of_week_start=self.env.day_of_week,
-                                          status_start=self.status, hex_start=self.driver_hex,
+                self._sample_start = dict(traj_id_start=self._trajectory_id, t_start=self.env.t,
+                                          day_of_week_start=self.env.day_of_week, status_start=self.status,
+                                          hex_start=self.driver_hex, loc_start=self.driver_location,
                                           route_length_start=self.route, reward_start=0, done_start=done)
                 # if first point is terminal (e.g. short life or death after order completion)
                 if terminal_state:
@@ -173,12 +176,14 @@ class Driver:
                                               if 'start' not in k}
                         self.trajectory.append({**self._sample_start, **self._sample_end})
             # is idle movement is doing nothing - don't collect it
-            elif self._sample_start['status_start'] == 'idle' and self._sample_start['hex_start'] == self.driver_hex and done == 0:
+            elif self._sample_start['status_start'] == 'idle' and \
+                    self._sample_start['hex_start'] == self.driver_hex and done == 0:
                 return
             else:
-                self._sample_end = dict(t_end=self.env.t, day_of_week_end=self.env.day_of_week, status_end=self.status,
-                                        hex_end=self.driver_hex, route_length_end=self.route, reward_end=0,
-                                        done_end=done)
+                self._sample_end = dict(traj_id_end=self._trajectory_id, t_end=self.env.t,
+                                        day_of_week_end=self.env.day_of_week, status_end=self.status,
+                                        hex_end=self.driver_hex, loc_end=self.driver_location,
+                                        route_length_end=self.route, reward_end=0, done_end=done)
                 self.trajectory.append({**self._sample_start, **self._sample_end})
                 self._sample_start = {key.replace('end', 'start'): value for key, value in self._sample_end.items()}
 
@@ -188,14 +193,17 @@ class Driver:
             finish_seconds = finish_dt.hour * 60 * 60 + finish_dt.minute * 60 + finish_dt.second
 
             # Collect assignment
-            self._sample_end = dict(t_end=self.env.t, day_of_week_end=self.env.day_of_week, status_end=status,
-                                    hex_end=self.driver_hex, reward_end=0, done_end=done)
+            self._sample_end = dict(traj_id_end=self._trajectory_id, t_end=self.env.t,
+                                    day_of_week_end=self.env.day_of_week, status_end=status, hex_end=self.driver_hex,
+                                    loc_end=self.driver_location, reward_end=0, done_end=done)
             self.trajectory.append({**self._sample_start, **self._sample_end})
 
             # Collect order completion
             self._sample_start = {key.replace('end', 'start'): value for key, value in self._sample_end.items()}
-            self._sample_end = dict(t_end=finish_seconds, day_of_week_end=self.env.day_of_week, status_end=status,
-                                    hex_end=self.order.finish_hex, reward_end=self.order.reward, done_end=done)
+            self._sample_end = dict(traj_id_end=self._trajectory_id, t_end=finish_seconds,
+                                    day_of_week_end=self.env.day_of_week, status_end=status,
+                                    hex_end=self.order.finish_hex, loc_end=self.order.order_finish_location,
+                                    reward_end=self.order.reward, done_end=done)
             self.trajectory.append({**self._sample_start, **self._sample_end})
             self._sample_start = None
 
@@ -212,3 +220,7 @@ class Driver:
             self.order = None
             self.status = 'idle'
             self.route = {}
+
+    def _generate_trajectory_id(self):
+        string = f'{str(self.driver_id)}_{str(self.driver_location)}'
+        return hashlib.md5(string.encode('utf-8')).hexdigest()
