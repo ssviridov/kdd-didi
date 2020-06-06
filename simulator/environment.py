@@ -25,7 +25,7 @@ class Environment:
     PICKUP_SPEED_M_PER_S = 3
     STEP_UNIT = 1
 
-    def __init__(self, day_of_week: int, agent: Agent, db_client):
+    def __init__(self, day_of_week: int, agent: Agent, db_client, random_seed=None):
         logger.info("Create environment")
         self.day_of_week = day_of_week
         self.t = 0
@@ -35,7 +35,7 @@ class Environment:
 
         self.drivers_collection = DriversCollection(env=self)
         self.orders_collection = OrdersCollection(env=self)
-        self.map = Map(env=self)
+        self.map = Map(env=self, random_seed=random_seed)
 
         self.agent = agent
         self.total_reward = 0
@@ -43,13 +43,15 @@ class Environment:
         self.d_orders = None
         self.d_drivers = None
 
-        self.cancel_model = CancelModel(weekday=day_of_week)
+        self.cancel_model = CancelModel(weekday=day_of_week, random_seed=random_seed)
 
         self.datacollector = DataCollector(env=self, db_client=db_client)
-        self.idle_trans_model = IdleTransitionModel()
+        self.idle_trans_model = IdleTransitionModel(random_seed=random_seed)
+
+        self.random_seed = random_seed
 
     def update_current_time(self, current_seconds):
-        logger.info(f"[{current_seconds}s] - simulation time")
+        logger.info(f"[{current_seconds}s] simulation time")
         self.t = current_seconds
         self.hours = current_seconds // (60 * 60)
         self.minutes = (current_seconds - self.hours * 60 * 60) // 60
@@ -88,12 +90,12 @@ class Environment:
 
     def generate_orders(self):
         logger.info("Start generating orders for day")
-        order_gen = OrderGenerator()
+        order_gen = OrderGenerator(random_seed=self.random_seed)
         self.d_orders = order_gen.generate_orders(weekday=self.day_of_week)
 
     def generate_drivers(self):
         logger.info("Start generating drivers for day")
-        driver_gen = DriverGenerator()
+        driver_gen = DriverGenerator(random_seed=self.random_seed)
         self.d_drivers = driver_gen.generate_drivers(weekday=self.day_of_week)
 
     def get_orders_for_second(self):

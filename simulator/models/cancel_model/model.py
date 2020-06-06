@@ -12,11 +12,13 @@ data_dir = os.path.join(cur_dir, "src")
 
 
 class CancelModel:
-    def __init__(self, data_dir=data_dir, weekday=1):
+    def __init__(self, data_dir=data_dir, weekday=1, random_seed=None):
         """
         data_path : path to DataFrame - Should contain only prob_cols!!!
         """
         logger.info("Initialize cancellation model")
+        if random_seed:
+            np.random.seed(random_seed)
         data_path = os.path.join(data_dir, f"cancel_probs_day{weekday}.csv.gz")
         df = pd.read_csv(data_path, compression="gzip")
         self.data = df.values.T

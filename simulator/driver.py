@@ -22,6 +22,7 @@ class DriversCollection(list):
     def __init__(self, env):
         logger.info(f"Start initializing driver collection")
         self.env = env
+        self.dict_view = {}
         super().__init__()
 
     def delete_drivers(self):
@@ -38,7 +39,9 @@ class DriversCollection(list):
     def add_drivers(self, drivers: list):
         # logger.info("Start adding drivers")
         for start_hex, lifetime in drivers:
-            self.append(Driver(env=self.env, start_hex=start_hex, lifetime=lifetime))
+            d = Driver(env=self.env, start_hex=start_hex, lifetime=lifetime)
+            self.append(d)
+            self.dict_view[d.driver_id] = d
 
     def move_drivers(self):
         # logger.info("Start moving drivers")
@@ -87,11 +90,10 @@ class DriversCollection(list):
 
     def get_by_driver_id(self, driver_id):
         # logger.info("Start get driver by id")
-        drivers = {i.driver_id: i for i in self}
-        if driver_id not in drivers.keys():
+        if driver_id not in self.dict_view.keys():
             raise DriversCollectionException(f'Driver_id={driver_id} does not exists')
         else:
-            return drivers[driver_id]
+            return self.dict_view[driver_id]
 
 
 class Driver:
