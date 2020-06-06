@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from collections import deque
+from simulator.utils import DataManager
 
 
 class BaseReplayBuffer:
@@ -58,8 +59,8 @@ class CsvReplayBuffer(BaseReplayBuffer):
 class PostgreSQLReplayBuffer(BaseReplayBuffer):
 
     def __init__(self,
-                 con_str = "postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi",
-                 query = """select ride_start_time,
+                 con_str="postgresql://postgres:tb3L2xBBeQCLpkbU@kdd-didi.cyf0lt2tjhid.eu-central-1.rds.amazonaws.com:5432/didi",
+                 query="""select ride_start_time,
                         pickup_hour, 
                         pickup_weekday,
                         st_x(pickup_point) as pickup_lon,
@@ -71,7 +72,6 @@ class PostgreSQLReplayBuffer(BaseReplayBuffer):
                         st_x(dropoff_point) as dropoff_lon,
                         st_y(dropoff_point) as dropoff_lat
                         from calc.ride_request_data_calc"""):
-
         self.con = create_engine(con_str)
         self.table = query.split("from")[1].strip()
         self.query = query + " order by random() limit %s"
@@ -87,7 +87,6 @@ class PostgreSQLReplayBuffer(BaseReplayBuffer):
 
     @staticmethod
     def preprocess(record):
-
         # prepare state feature
         pickup_hour_sin = np.sin(record["pickup_hour"] * (2. * np.pi / 23))
         pickup_hour_cos = np.cos(record["pickup_hour"] * (2. * np.pi / 23))
@@ -119,3 +118,27 @@ class PostgreSQLReplayBuffer(BaseReplayBuffer):
 
     def __len__(self):
         return self.con.engine.execute('select count(*) from %s' % self.table).scalar()
+
+
+class MongoDBReplayBuffer(BaseReplayBuffer):
+    def __init__(self):
+        self.db_client = DataManager()
+
+    def __len__(self):
+        return self.db_client.trajectories_collection.count()
+
+    def sample(self, batch_size: int):
+        samples = self.db_client.trajectories_collection.aggregate([{"$sample": {"size": batch_size}}])
+        return [self._prepare_sample(s) for s in list(samples)]
+
+    @staticmethod
+    def _prepare_sample(sample: dict):
+        # TODO preprocess sample from MongoDB
+        return sample
+
+
+# if __name__ == "__main__":
+#     from pprint import pprint
+#     test = MongoDBReplayBuffer()
+#     pprint(len(test))
+#     pprint(test.sample(batch_size=10))
