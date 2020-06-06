@@ -32,6 +32,7 @@ class DriversCollection(list):
             if (driver.status != 'assigned') and (driver.deadline <= self.env.t):
                 driver.update_trajectory('idle', terminal_state=True)
                 self.env.datacollector.collect_trajectory(driver)
+                del self.dict_view[driver.driver_id]
                 self.remove(driver)
                 deleted_drivers += 1
         return deleted_drivers
