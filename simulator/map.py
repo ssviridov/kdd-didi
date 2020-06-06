@@ -21,17 +21,17 @@ class Map:
             self.d_paths = pickle.load(f)
 
         self.coords_df = pd.read_csv(os.path.join(cur_dir, 'data', 'coords_hex.csv'), sep=';')
+        self.d_coords = {}
+        for _, row in self.coords_df.iterrows():
+            self.d_coords[row["hex"]] = row[["lon_min", "lon_max", "lat_min", "lat_max"]]
 
     def get_lonlat(self, hexagon):
-        hex_row = self.coords_df.loc[self.coords_df.hex == hexagon].reset_index().iloc[0]
+        hex_row = self.d_coords[hexagon]
         return self._generate_coord(hex_row)
 
     def generate_order_endpoints(self, start_hex, end_hex):
-        # logger.info(f"Start loc start_coords")
-        start_row = self.coords_df.loc[self.coords_df.hex == start_hex].reset_index().iloc[0]
-        # logger.info(f"Start loc stop_coords")
-        end_row = self.coords_df.loc[self.coords_df.hex == end_hex].reset_index().iloc[0]
-        # logger.info(f"Start random choice")
+        start_row = self.d_coords[start_hex]
+        end_row = self.d_coords[end_hex]
         start_location = self._generate_coord(start_row)
         end_location = self._generate_coord(end_row)
         return start_location, end_location
