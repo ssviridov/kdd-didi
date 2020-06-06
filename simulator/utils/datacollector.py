@@ -67,7 +67,8 @@ class DataCollector:
         self._step_data['repositioning'] = repositioning_list
 
     def collect_trajectory(self, driver):
-        self._step_data['trajectories'].append({'driver_id': driver.driver_id,
-                                                'born': driver.born,
-                                                'died': driver.deadline,
-                                                'trajectory': driver.trajectory})
+        self._step_data['trajectories'].extend(driver.trajectory)
+                                                # {'driver_id': driver.driver_id,
+                                                # 'born': driver.born,
+                                                # 'died': driver.deadline,
+                                                # 'trajectory': driver.trajectory})
