@@ -14,6 +14,7 @@ from .models.cancel_model import CancelModel
 from .models.idle_transition import IdleTransitionModel
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,7 +88,6 @@ class Environment:
         idle_drivers = [i for i in all_idle_drivers if not i.route]
         self._idle_movement(idle_drivers)
 
-
     def generate_orders(self):
         logger.info("Start generating orders for day")
         order_gen = OrderGenerator(random_seed=self.random_seed)
@@ -151,11 +151,13 @@ class Environment:
         self.drivers_collection.reposition(agent_response)
 
     def _idle_movement(self, idle_drivers: list):
+        logger.info("Idle model")
         prepared_request = dict(idle_drivers=[{'driver_id': d.driver_id,
-                                              'driver_location': d.driver_hex} for d in idle_drivers],
+                                               'driver_location': d.driver_hex} for d in idle_drivers],
                                 day_of_week=self.day_of_week,
                                 hour=self.hours)
         model_response = self.idle_trans_model.get_driver_idle_transition(prepared_request)
+        logger.info("idle_movement")
         self.drivers_collection.idle_movement(model_response)
 
     def _dispatching(self, orders, drivers):

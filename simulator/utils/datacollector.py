@@ -1,4 +1,7 @@
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DataCollector:
@@ -37,6 +40,7 @@ class DataCollector:
         self._step_data['trajectories'] = list()
 
     def write_simulation_step(self):
+        logger.info("Write simulation step")
         self._step_data['total']['total_drivers'] = len(self.env.drivers_collection)
         self._step_data['total']['total_orders'] = len(self.env.orders_collection)
         self._step_data['total']['total_idle_drivers'] = len(self.env.drivers_collection.get_drivers(status='idle'))
