@@ -71,7 +71,7 @@ class ValueAgent(BaseAgent):
             for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(param.data)
 
-        return value_loss.detach().item()
+        return value_loss.detach().item(), value.detach().mean().item()
 
     def save(self, path):
         torch.save(self.value_net, path)

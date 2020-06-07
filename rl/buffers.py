@@ -117,7 +117,9 @@ class PostgreSQLReplayBuffer(BaseReplayBuffer):
         return state, float(record["reward"]), new_state, info
 
     def __len__(self):
-        return self.con.engine.execute('select count(*) from %s' % self.table).scalar()
+        with self.con.connect() as connection:
+            count = connection.execute('select count(*) from %s' % self.table).scalar()
+        return count
 
 
 class MongoDBReplayBuffer(BaseReplayBuffer):
