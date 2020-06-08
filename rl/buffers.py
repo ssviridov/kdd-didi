@@ -131,7 +131,10 @@ class MongoDBReplayBuffer(BaseReplayBuffer):
         return self.db_client.trajectories_collection.count()
 
     def sample(self, batch_size: int):
-        samples = self.db_client.trajectories_collection.aggregate([{"$sample": {"size": batch_size}}])
+        if self.db_client.training_collection.count() < batch_size:
+            samples = self.db_client.trajectories_collection.aggregate([{"$sample": {"size": batch_size}}])
+        else:
+            samples = self.db_client.training_collection.aggregate([{"$sample": {"size": batch_size}}])
         state, reward, new_state, info, done = self._prepare_samples(list(samples))
         return state, reward, new_state, info, done
 
