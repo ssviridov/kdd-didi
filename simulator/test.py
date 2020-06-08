@@ -3,7 +3,7 @@ from simulator import TaxiSimulator
 
 import json
 
-I_INSTALLED_MONGO_CONTAINER = True
+I_INSTALLED_MONGO_CONTAINER = False
 
 if I_INSTALLED_MONGO_CONTAINER:
     taxi_sim = TaxiSimulator(write_simulations_to_db=True, random_seed=2020)
