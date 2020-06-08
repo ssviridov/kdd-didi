@@ -1,6 +1,5 @@
 import datetime as dt
 import itertools
-import random
 import numpy as np
 
 from .driver import DriversCollection
@@ -68,7 +67,7 @@ class Environment:
                                            dt.time(self.hours, self.minutes, self.seconds)).timestamp())
 
     def reposition_actions(self):
-        # logger.info("Start reposition action")
+        logger.debug("Start reposition action")
         all_idle_drivers = self.drivers_collection.get_drivers('idle')
 
         # Valid for Repositioning & Agent Repositioning Selection models
@@ -82,29 +81,29 @@ class Environment:
         # self._idle_movement(idle_drivers)
 
     def idle_movement(self):
-        # logger.info("Idle movement")
+        logger.debug("Idle movement")
         all_idle_drivers = self.drivers_collection.get_drivers('idle')
         idle_drivers = [i for i in all_idle_drivers if not i.route]
         self._idle_movement(idle_drivers)
 
     def generate_orders(self):
-        # logger.info("Start generating orders for day")
+        logger.debug("Start generating orders for day")
         order_gen = OrderGenerator(random_seed=self.random_seed)
         self.d_orders = order_gen.generate_orders(weekday=self.day_of_week)
 
     def generate_drivers(self):
-        # logger.info("Start generating drivers for day")
+        logger.debug("Start generating drivers for day")
         driver_gen = DriverGenerator(random_seed=self.random_seed)
         self.d_drivers = driver_gen.generate_drivers(weekday=self.day_of_week)
 
     def get_orders_for_second(self):
-        # logger.info("Get orders for this simulation second")
+        logger.debug("Get orders for this simulation second")
         orders = self.d_orders.get(self.t, [])
         self.datacollector._step_data['total']['income_orders'] = len(orders)
         self.orders_collection.add_orders(orders)
 
     def balancing_drivers(self):
-        # logger.info("Start making drivers online/offline")
+        logger.debug("Start making drivers online/offline")
         # generating new drivers
         drivers = self.d_drivers.get(self.t, [])
         self.datacollector._step_data['total']['income_drivers'] = len(drivers)
@@ -114,7 +113,7 @@ class Environment:
         self.datacollector._step_data['total']['outcome_drivers'] = deleted_amt
 
     def dispatching_actions(self):
-        # logger.info("Start dispatch action")
+        logger.debug("Start dispatch action")
         all_idle_drivers = self.drivers_collection.get_dispatching_drivers()
         orders = self.orders_collection.get_orders(status="unassigned")
 
@@ -125,7 +124,7 @@ class Environment:
         self.cancel_orders(assigned_orders)
 
     def cancel_orders(self, assigned_orders: list):
-        # logger.info("Start cancelling orders")
+        logger.debug("Start cancelling orders")
         orders = self.orders_collection.get_orders(status="assigned")
         orders = [order for order in orders if order.order_id in [d['order_id'] for d in assigned_orders]]
         if not orders:
@@ -138,7 +137,7 @@ class Environment:
         self.orders_collection.cancel_orders(orders_to_cancel)
 
     def move_drivers(self):
-        # logger.info("Start moving drivers")
+        logger.debug("Start moving drivers")
         self.drivers_collection.move_drivers()
 
     def _repositioning(self, drivers_for_reposition: list):
@@ -150,18 +149,15 @@ class Environment:
         self.drivers_collection.reposition(agent_response)
 
     def _idle_movement(self, idle_drivers: list):
-        # logger.info("Idle model")
         prepared_request = dict(idle_drivers=[{'driver_id': d.driver_id,
                                                'driver_location': d.driver_hex} for d in idle_drivers],
                                 day_of_week=self.day_of_week,
                                 hour=self.hours)
         model_response = self.idle_trans_model.get_driver_idle_transition(prepared_request)
-        # logger.info("idle_movement")
         self.drivers_collection.idle_movement(model_response)
 
     def _dispatching(self, orders, drivers):
         prepared_request = prepare_dispatching_request(env=self, drivers=drivers, orders=orders)
-        # logger.info("Send dispatching request to Agent")
         agent_response = self.agent.dispatch(dispatch_observ=prepared_request)
         handle_dispatching_response(env=self, agent_request=prepared_request, agent_response=agent_response)
         self.datacollector.collect_dispatching(prepared_request, agent_response)

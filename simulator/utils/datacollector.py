@@ -40,7 +40,7 @@ class DataCollector:
         self._step_data['trajectories'] = list()
 
     def write_simulation_step(self):
-        logger.info("Write simulation step")
+        logger.debug("Write simulation step")
         self._step_data['total']['total_drivers'] = len(self.env.drivers_collection)
         self._step_data['total']['total_orders'] = len(self.env.orders_collection)
         self._step_data['total']['total_idle_drivers'] = len(self.env.drivers_collection.get_drivers(status='idle'))
@@ -72,7 +72,7 @@ class DataCollector:
 
     def collect_trajectory(self, driver):
         self._step_data['trajectories'].extend(driver.trajectory)
-                                                # {'driver_id': driver.driver_id,
-                                                # 'born': driver.born,
-                                                # 'died': driver.deadline,
-                                                # 'trajectory': driver.trajectory})
+        # {'driver_id': driver.driver_id,
+        # 'born': driver.born,
+        # 'died': driver.deadline,
+        # 'trajectory': driver.trajectory})
