@@ -4,6 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from collections import deque
 from simulator.utils import DataManager
+from .utils import time_to_sincos
 
 
 class BaseReplayBuffer:
@@ -36,7 +37,9 @@ class CsvReplayBuffer(BaseReplayBuffer):
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
         state, action, reward, next_state = map(np.stack, zip(*batch))
-        return state, action, reward, next_state
+        # TODO add 'done' array
+        done = np.zeros(reward.shape)
+        return state, action, reward, next_state, done
 
     def push(self, record):
         record = self.preprocess(record)
@@ -83,15 +86,15 @@ class PostgreSQLReplayBuffer(BaseReplayBuffer):
             for row in sample:
                 batch.append(self.preprocess(row))
         state, reward, next_state, info = map(np.stack, zip(*batch))
-        return state, reward, next_state, info
+        # TODO create 'done' array
+        done = np.zeros(reward.shape)
+        return state, reward, next_state, info, done
 
     @staticmethod
     def preprocess(record):
         # prepare state feature
-        pickup_hour_sin = np.sin(record["pickup_hour"] * (2. * np.pi / 23))
-        pickup_hour_cos = np.cos(record["pickup_hour"] * (2. * np.pi / 23))
-        pickup_weekday_sin = np.sin(record["pickup_weekday"] * (2. * np.pi / 7))
-        pickup_weekday_cos = np.cos(record["pickup_weekday"] * (2. * np.pi / 7))
+        pickup_hour_sin, pickup_hour_cos = time_to_sincos(record["pickup_hour"], value_type='hour')
+        pickup_weekday_sin, pickup_weekday_cos = time_to_sincos(record["pickup_weekday"], value_type='day_of_week')
 
         state = [pickup_hour_sin,
                  pickup_hour_cos,
@@ -100,10 +103,8 @@ class PostgreSQLReplayBuffer(BaseReplayBuffer):
                  record["pickup_lon"],
                  record["pickup_lat"]]
 
-        dropoff_hour_sin = np.sin(record["dropoff_hour"] * (2. * np.pi / 23))
-        dropoff_hour_cos = np.cos(record["dropoff_hour"] * (2. * np.pi / 23))
-        dropoff_weekday_sin = np.sin(record["dropoff_weekday"] * (2. * np.pi / 7))
-        dropoff_weekday_cos = np.cos(record["dropoff_weekday"] * (2. * np.pi / 7))
+        dropoff_hour_sin, dropoff_hour_cos = time_to_sincos(record["dropoff_hour"], value_type='hour')
+        dropoff_weekday_sin, dropoff_weekday_cos = time_to_sincos(record["dropoff_weekday"], value_type='day_of_week')
 
         new_state = [dropoff_hour_sin,
                      dropoff_hour_cos,
@@ -131,16 +132,43 @@ class MongoDBReplayBuffer(BaseReplayBuffer):
 
     def sample(self, batch_size: int):
         samples = self.db_client.trajectories_collection.aggregate([{"$sample": {"size": batch_size}}])
-        return [self._prepare_sample(s) for s in list(samples)]
+        state, reward, new_state, info, done = self._prepare_samples(list(samples))
+        return state, reward, new_state, info, done
 
     @staticmethod
-    def _prepare_sample(sample: dict):
-        # TODO preprocess sample from MongoDB
-        return sample
+    def _prepare_samples(samples: list):
+        reward_list, info_list, state_list, new_state_list, done_list = list(), list(), list(), list(), list()
+        for sample in samples:
+            reward_list.append(sample['reward'])
+            info_list.append(sample['t_end'] - sample['t_start'] + 1)
+            done_list.append(sample['done'])
+
+            pickup_hour_sin, pickup_hour_cos = time_to_sincos(int(sample["t_start"] / (60 * 60)), value_type='hour')
+            pickup_weekday_sin, pickup_weekday_cos = time_to_sincos(sample["day_of_week"], value_type='day_of_week')
+            state = [pickup_hour_sin,
+                     pickup_hour_cos,
+                     pickup_weekday_sin,
+                     pickup_weekday_cos,
+                     sample["lonlat_start"][0],
+                     sample["lonlat_start"][1]]
+            state_list.append(state)
+
+            dropoff_hour_sin, dropoff_hour_cos = time_to_sincos(int(sample["t_end"] / (60 * 60)), value_type='hour')
+            dropoff_weekday_sin, dropoff_weekday_cos = time_to_sincos(sample["day_of_week"], value_type='day_of_week')
+            new_state = [dropoff_hour_sin,
+                         dropoff_hour_cos,
+                         dropoff_weekday_sin,
+                         dropoff_weekday_cos,
+                         sample["lonlat_end"][0],
+                         sample["lonlat_end"][1]]
+            new_state_list.append(new_state)
+
+        return np.array(state_list), np.array(reward_list), np.array(new_state_list), np.array(info_list), np.array(done_list)
 
 
 # if __name__ == "__main__":
 #     from pprint import pprint
+#
 #     test = MongoDBReplayBuffer()
 #     pprint(len(test))
 #     pprint(test.sample(batch_size=10))
