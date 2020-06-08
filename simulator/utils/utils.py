@@ -39,13 +39,13 @@ def get_distance(start, finish):
 
 
 def prepare_dispatching_request(env, drivers, orders):
-    logger.info("Prepare dispatching request")
+    # logger.info("Prepare dispatching request")
     pairs = list()
-    logger.info("Prepare all pairs")
+    # logger.info("Prepare all pairs")
     for order in orders:
         order_pairs = _pairs_for_order(order, env, drivers)
         pairs += [o for o in order_pairs if o['order_driver_distance'] <= env.MAX_PICKUP_DISTANCE]
-    logger.info("Prepare reward")
+    # logger.info("Prepare reward")
     if len(pairs) == 0:
         return pairs
     else:
@@ -54,7 +54,7 @@ def prepare_dispatching_request(env, drivers, orders):
 
 
 def handle_dispatching_response(env, agent_request, agent_response):
-    logger.info("Handle dispatching response")
+    # logger.info("Handle dispatching response")
     for r in agent_response:
         order_info = [i for i in agent_request if i['driver_id'] == r['driver_id']
                       and i['order_id'] == r['order_id']][0]
