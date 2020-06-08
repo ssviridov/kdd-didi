@@ -1,8 +1,9 @@
 import json
 import os
+import pylab as plt
+
 
 from .environment import Environment
-from .agent import Agent
 from .utils import DataManager
 
 import logging
@@ -26,12 +27,16 @@ class TaxiSimulator:
 
         self.random_seed = random_seed
 
-    def simulate(self, day_of_week: int, agent: Agent, simulation_name=None):
+    def simulate(self, day_of_week: int, agent, training_each=60, simulation_name=None):
         if self.db_client:
             self.db_client(simulation_name)
+            self.db_client.truncate_training_collection()
         env = Environment(day_of_week=day_of_week, agent=agent, db_client=self.db_client, random_seed=self.random_seed)
         env.generate_orders()
         env.generate_drivers()
+        losses = list()
+        v_mean = list()
+        v_std = list()
         for sec in range(1, self.day_seconds + 1):
             env.update_current_time(current_seconds=sec)
             if sec % 100 == 0:
@@ -43,8 +48,35 @@ class TaxiSimulator:
                 env.dispatching_actions()
             env.move_drivers()
             env.datacollector.write_simulation_step()
+            if sec % training_each == 0:
+                loss = env.agent.train()
+                losses.append(loss[0])
+                v_mean.append(loss[1])
+                v_std.append(loss[2])
+                if loss:
+                    self.plot_losses(losses, v_mean, v_std, sec)
         if not self.db_client:
             return env.datacollector.data
+        return env.agent
 
     def get_simulation(self, name: str):
         return self.db_client.read_simulation(name)
+
+    @staticmethod
+    def plot_losses(losses: list, v_mean: list, v_std: list, sec: int):
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(16, 8), sharex=True)
+
+        ax1.plot(losses, color='b')
+        ax1.set_ylabel('Loss')
+
+        ax2.plot(v_mean, color='r')
+        ax2.set_ylabel('V-mean')
+
+        ax3.plot(v_std, color='g')
+        ax3.set_ylabel('V-std')
+        ax3.set_xlabel('5mins')
+
+        fig.suptitle(f'{sec} of the day')
+
+        plt.ion()
+        plt.show()
