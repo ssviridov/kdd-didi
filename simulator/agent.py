@@ -52,3 +52,6 @@ class Agent(object):
             # the default reposition is to let drivers stay where they are
             repo_action.append({'driver_id': driver['driver_id'], 'destination': driver['grid_id']})
         return repo_action
+
+    def train(self):
+        return None
