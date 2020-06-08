@@ -1,6 +1,5 @@
 from ..models import RewardModel
-from geopy.distance import geodesic
-from datetime import datetime
+from geopy.distance import great_circle
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ def _pairs_for_order(o, env, drivers):
 def get_distance(start, finish):
     latlon_start = (start[1], start[0])
     latlon_finish = (finish[1], finish[0])
-    return geodesic(latlon_start, latlon_finish).km
+    return great_circle(latlon_start, latlon_finish).km
 
 
 def prepare_dispatching_request(env, drivers, orders):

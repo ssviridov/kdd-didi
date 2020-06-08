@@ -5,20 +5,37 @@
         "standard": {
             "format": "%(asctime)s.%(msecs)03d (%(relative)ss) - %(levelname)s - %(name)s - %(message)s",
             "datefmt": "%H:%M:%S"
+        },
+        "parser": {
+            "format": "%(relative)s;%(message)s",
+            "datefmt": "%H:%M:%S"
         }
     },
     "filters": {
         "time": {
+            "()": "simulator.utils.TimeFilter"
+        },
+        "time_file": {
             "()": "simulator.utils.TimeFilter"
         }
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
+            "level": "INFO",
             "formatter": "standard",
             "stream": "ext://sys.stdout",
             "filters": ["time"]
+        },
+        "info_file_handler": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "parser",
+            "filename": "info.log",
+            "maxBytes": 104857600,
+            "backupCount": 20,
+            "encoding": "utf8",
+            "filters": ["time_file"]
         }
     },
     "loggers": {
@@ -33,7 +50,8 @@
     "root": {
         "level": "DEBUG",
         "handlers": [
-            "console"
+            "console",
+            "info_file_handler"
         ]
     }
 }
