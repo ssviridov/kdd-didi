@@ -9,7 +9,7 @@ from .utils import time_to_sincos, match
 
 class BaseAgent:
 
-    def dispatch(self, dispatch_observ: list):
+    def dispatch(self, dispatch_observ):
         """ Compute the assignment between drivers and passengers at each time step
            :param dispatch_observ: a list of dict, the key in the dict includes:
                order_id, int
@@ -113,7 +113,7 @@ class ValueAgent(BaseAgent):
             for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(param.data)
 
-        return value_loss.detach().item(), value.detach().mean().item()
+        return value_loss.detach().item(), value.detach().mean().item(), value.detach().std().item()
 
     def save(self, path):
         torch.save(self.value_net, path)
@@ -134,7 +134,7 @@ class ValueAgent(BaseAgent):
         next_state = torch.FloatTensor(raw_next_state).to(self.device)
 
         value = request['reward_units'] + self.gamma * self.value_net(next_state) - self.value_net(state)
-        return value.item()
+        return value.detach().item()
 
     @staticmethod
     def _prepare_state(hour: int, day_of_week: int, lon: float, lat: float):
