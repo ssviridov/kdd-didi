@@ -24,6 +24,7 @@ class DataManager:
             self.simulations_db = self.client.simulations
             self.trajectories_db = self.client.trajectories
             self.trajectories_collection = self.trajectories_db['trajectories']
+            self.training_collection = self.trajectories_db['training']
             self.db_names = {"simulations": self.simulations_db, "trajectories": self.trajectories_db}
         except Exception as e:
             raise DataManagerException("Unsuccessful connection to MongoDB - {}. "
@@ -33,6 +34,11 @@ class DataManager:
     def __call__(self, simulation_name):
         self.simulations_name = simulation_name
         self.create_simulation(simulation_name)
+
+    def truncate_training_collection(self):
+        self.training_collection.drop()
+        self.trajectories_db.create_collection('training')
+        self.training_collection = self.trajectories_db['training']
 
     def show_collections(self, db_name):
         return self.db_names[db_name].list_collection_names()
@@ -58,8 +64,6 @@ class DataManager:
         if 'step' not in step_data.keys():
             raise DataManagerException("Step data should contain 'step' key")
         trajectories, stats = self._prepare_for_writing(step_data)
-        #     self._prepare_document(step_data['trajectories'])
-        # document = self._prepare_document(step_data['total'], read_mode=False)
         try:
             self.simulations_db[simulation_name].insert_one(stats)
         except DuplicateKeyError:
@@ -68,7 +72,7 @@ class DataManager:
             pass
         else:
             self.trajectories_collection.insert_many(trajectories)
-
+            self.training_collection.insert_many(trajectories)
 
     def write_simulation(self, simulation_name, simulation_data: list):
         if not self.simulation_exists(simulation_name):
