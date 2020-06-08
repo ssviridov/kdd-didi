@@ -2,7 +2,6 @@ import json
 import os
 import pylab as plt
 
-
 from .environment import Environment
 from .utils import DataManager
 
@@ -17,13 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class TaxiSimulator:
-    day_seconds = 60 * 60 * 24
-
-    def __init__(self, write_simulations_to_db=True, random_seed=None):
+    def __init__(self, write_simulations_to_db=True, random_seed=None, start_hour: int = 0, end_hour: int = 24):
+        assert 0 <= start_hour < end_hour <= 24
         if write_simulations_to_db:
             self.db_client = DataManager()
         else:
             self.db_client = None
+
+        self.start_second = start_hour * 3600 + 1
+        self.end_second = end_hour * 3600
 
         self.random_seed = random_seed
 
@@ -37,7 +38,7 @@ class TaxiSimulator:
         losses = list()
         v_mean = list()
         v_std = list()
-        for sec in range(1, self.day_seconds + 1):
+        for sec in range(self.start_second, self.end_second + 1):
             env.update_current_time(current_seconds=sec)
             if sec % 100 == 0:
                 env.reposition_actions()
@@ -50,10 +51,10 @@ class TaxiSimulator:
             env.datacollector.write_simulation_step()
             if sec % training_each == 0:
                 loss = env.agent.train()
-                losses.append(loss[0])
-                v_mean.append(loss[1])
-                v_std.append(loss[2])
                 if loss:
+                    losses.append(loss[0])
+                    v_mean.append(loss[1])
+                    v_std.append(loss[2])
                     self.plot_losses(losses, v_mean, v_std, sec)
         if not self.db_client:
             return env.datacollector.data
