@@ -3,14 +3,48 @@ from torch import nn
 import numpy as np
 import torch.optim as optim
 
+from datetime import datetime as dt
+from .utils import time_to_sincos, match
+
 
 class BaseAgent:
 
-    def dispatch(self):
+    def dispatch(self, dispatch_observ: list):
+        """ Compute the assignment between drivers and passengers at each time step
+           :param dispatch_observ: a list of dict, the key in the dict includes:
+               order_id, int
+               driver_id, int
+               order_driver_distance, float
+               order_start_location, a list as [lng, lat], float
+               order_finish_location, a list as [lng, lat], float
+               driver_location, a list as [lng, lat], float
+               timestamp, int
+               order_finish_timestamp, int
+               day_of_week, int
+               reward_units, float
+               pick_up_eta, float
+           :return: a list of dict, the key in the dict includes:
+               order_id and driver_id, the pair indicating the assignment
+           """
         pass
 
-    def reposition(self):
-        pass
+    def reposition(self, repo_observ: list):
+        """ Compute the reposition action for the given drivers
+            :param repo_observ: a dict, the key in the dict includes:
+                timestamp: int
+                driver_info: a list of dict, the key in the dict includes:
+                    driver_id: driver_id of the idle driver in the treatment group, int
+                    grid_id: id of the grid the driver is located at, str
+                day_of_week: int
+            :return: a list of dict, the key in the dict includes:
+                driver_id: corresponding to the driver_id in the od_list
+                destination: id of the grid the driver is repositioned to, str
+            """
+        repo_action = []
+        for driver in repo_observ['driver_info']:
+            # the default reposition is to let drivers stay where they are
+            repo_action.append({'driver_id': driver['driver_id'], 'destination': driver['grid_id']})
+        return repo_action
 
     def train(self):
         pass
@@ -47,8 +81,16 @@ class ValueAgent(BaseAgent):
         self.update = update
         self.iter = 0
 
+    def dispatch(self, dispatch_observ):
+        weighted_observation = list()
+        for request in dispatch_observ:
+            request['weight'] = self.estimate_dispatching_request(request)
+            weighted_observation.append(request)
+        _, dispatch_action = match(weighted_observation, weight='weight')
+        return dispatch_action
+
     def train(self):
-        state, reward, next_state, info = self.replay_buffer.sample(self.batch_size)
+        state, reward, next_state, info, done = self.replay_buffer.sample(self.batch_size)
 
         state = torch.FloatTensor(state).to(self.device)
         reward = torch.FloatTensor(reward).unsqueeze(1).to(self.device)
@@ -56,8 +98,8 @@ class ValueAgent(BaseAgent):
         k = torch.FloatTensor(info).unsqueeze(1).to(self.device)
 
         value = self.value_net(state)
-        target_value = (reward*((self.gamma**k) - 1))/(k*(self.gamma - 1)) +\
-                       (self.gamma**k) * self.target_value_net(next_state)
+        target_value = (reward * ((self.gamma ** k) - 1)) / (k * (self.gamma - 1)) + \
+                       (self.gamma ** k) * self.target_value_net(next_state)
 
         value_loss = self.criterion(value, target_value.detach())
 
@@ -75,3 +117,57 @@ class ValueAgent(BaseAgent):
 
     def save(self, path):
         torch.save(self.value_net, path)
+
+    def estimate_dispatching_request(self, request: dict):
+        needed_keys = {'timestamp', 'day_of_week', 'order_finish_timestamp',
+                       'driver_location', 'order_finish_location', 'reward_units'}
+        assert not needed_keys.difference(set(request.keys()))
+
+        state_hour = dt.fromtimestamp(request['timestamp']).hour
+        next_state_hour = dt.fromtimestamp(request['order_finish_timestamp']).hour
+
+        raw_state = self._prepare_state(state_hour, request['day_of_week'],
+                                        request['driver_location'][0], request['driver_location'][1])
+        raw_next_state = self._prepare_state(next_state_hour, request['day_of_week'],
+                                             request['order_finish_location'][0], request['order_finish_location'][1])
+        state = torch.FloatTensor(raw_state).to(self.device)
+        next_state = torch.FloatTensor(raw_next_state).to(self.device)
+
+        value = request['reward_units'] + self.gamma * self.value_net(next_state) - self.value_net(state)
+        return value.item()
+
+    @staticmethod
+    def _prepare_state(hour: int, day_of_week: int, lon: float, lat: float):
+        hour_sin, hour_cos = time_to_sincos(hour, value_type='hour')
+        day_of_week_sin, day_of_week_cos = time_to_sincos(day_of_week, value_type='day_of_week')
+        return np.array([hour_sin, hour_cos, day_of_week_sin, day_of_week_cos, lon, lat])
+
+
+# if __name__ == '__main__':
+#     from buffers import MongoDBReplayBuffer
+#     from models import ValueNetwork
+#
+#     buffer = MongoDBReplayBuffer()
+#     agent = ValueAgent(replay_buffer=buffer, value_net_class=ValueNetwork)
+#
+#     losses = list()
+#     for i in range(1000):
+#         loss = agent.train()
+#         losses.append(loss)
+#         print(i, loss)
+#
+#     test_request = [{'reward_units': 2.2887375583652845, 'order_id': 3, 'driver_id': 0,
+#                      'order_start_location': [104.04430663835227, 30.681486716584075],
+#                      'order_finish_location': [104.0441221042292, 30.63796116557718],
+#                      'driver_location': [104.04190794375882, 30.683316711804967], 'timestamp': 1591563608,
+#                      'day_of_week': 1, 'order_driver_distance': 306.573911706953, 'pick_up_eta': 38.32173896336913,
+#                      'distance': 5.533611851509747, 'order_finish_timestamp': 1591564337},
+#                     {'reward_units': 2.5521145410223762, 'order_id': 5, 'driver_id': 0,
+#                      'order_start_location': [104.04178862062531, 30.674484810171272],
+#                      'order_finish_location': [104.10461729030528, 30.680566290308228],
+#                      'driver_location': [104.04190794375882, 30.683316711804967], 'timestamp': 1591563608,
+#                      'day_of_week': 1, 'order_driver_distance': 979.2063672052939, 'pick_up_eta': 122.40079590066173,
+#                      'distance': 6.229383663898964, 'order_finish_timestamp': 1591564508}]
+#
+#     action = agent.dispatch(test_request)
+#     print(action)
