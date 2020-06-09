@@ -1,10 +1,14 @@
 import torch
 from torch import nn
 import numpy as np
+import pandas as pd
 import torch.optim as optim
 
+import os
 from datetime import datetime as dt
 from .utils import time_to_sincos, match
+
+cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class BaseAgent:
@@ -28,7 +32,7 @@ class BaseAgent:
            """
         pass
 
-    def reposition(self, repo_observ: list):
+    def reposition(self, repo_observ: dict):
         """ Compute the reposition action for the given drivers
             :param repo_observ: a dict, the key in the dict includes:
                 timestamp: int
@@ -81,6 +85,8 @@ class ValueAgent(BaseAgent):
         self.update = update
         self.iter = 0
 
+        self.hexes = pd.read_csv(os.path.join(cur_dir, 'data', 'hexes.csv'), sep=';')
+
     def dispatch(self, dispatch_observ):
         weighted_observation = list()
         for request in dispatch_observ:
@@ -88,6 +94,27 @@ class ValueAgent(BaseAgent):
             weighted_observation.append(request)
         _, dispatch_action = match(weighted_observation, weight='weight')
         return dispatch_action
+
+    def reposition(self, repo_observ: dict):
+        hexes = self.hexes.copy()
+
+        hour = dt.fromtimestamp(repo_observ['timestamp']).hour
+        h_sin, h_cos = time_to_sincos(hour, value_type='hour')
+        d_sin, d_cos = time_to_sincos(repo_observ['day_of_week'], value_type='day_of_week')
+        hexes['hour_sin'], hexes['hour_cos'] = [h_sin, h_cos]
+        hexes['day_of_week_sin'], hexes['day_of_week_cos'] = [d_sin, d_cos]
+        raw_states = hexes[['hour_sin', 'hour_cos', 'day_of_week_sin', 'day_of_week_cos', 'lon', 'lat']].values
+
+        states = torch.FloatTensor(raw_states).to(self.device)
+        hexes['value'] = self.value_net(states).detach().numpy().flatten()
+        reposition_spots = hexes.nlargest(len(repo_observ['driver_info']), columns='value')
+
+        drivers = pd.DataFrame(repo_observ['driver_info'])
+        drivers_states = pd.merge(drivers, hexes, how='left',
+                                  left_on='grid_id', right_on='hex').drop('hex', axis=1).sort_values('value')
+
+        return [{'driver_id': driver, 'destination': grid}
+                for driver, grid in zip(drivers_states.driver_id.values, reposition_spots.hex.values)]
 
     def train(self):
         state, reward, next_state, info, done = self.replay_buffer.sample(self.batch_size)
@@ -98,8 +125,9 @@ class ValueAgent(BaseAgent):
         k = torch.FloatTensor(info).unsqueeze(1).to(self.device)
 
         value = self.value_net(state)
-        target_value = (reward * ((self.gamma ** k) - 1)) / (k * (self.gamma - 1)) + \
-                       (self.gamma ** k) * self.target_value_net(next_state)
+        # target_value = (reward * ((self.gamma ** k) - 1)) / (k * (self.gamma - 1)) + \
+        #                (self.gamma ** k) * self.target_value_net(next_state)
+        target_value = reward + self.gamma * self.target_value_net(next_state)
 
         value_loss = self.criterion(value, target_value.detach())
 
@@ -141,7 +169,6 @@ class ValueAgent(BaseAgent):
         hour_sin, hour_cos = time_to_sincos(hour, value_type='hour')
         day_of_week_sin, day_of_week_cos = time_to_sincos(day_of_week, value_type='day_of_week')
         return np.array([hour_sin, hour_cos, day_of_week_sin, day_of_week_cos, lon, lat])
-
 
 # if __name__ == '__main__':
 #     from buffers import MongoDBReplayBuffer
