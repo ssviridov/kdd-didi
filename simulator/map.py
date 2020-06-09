@@ -16,16 +16,30 @@ class Map:
         self.env = env
         if random_seed:
             np.random.seed(random_seed)
+
         with open(os.path.join(cur_dir, 'data', 'hex_graph.pickle'), 'rb') as f:
             self.graph = pickle.load(f)
-
         with open(os.path.join(cur_dir, 'data', 'd_paths.pickle'), 'rb') as f:
             self.d_paths = pickle.load(f)
 
         self.coords_df = pd.read_csv(os.path.join(cur_dir, 'data', 'coords_hex.csv'), sep=';')
+
+        # filter nodes
+        hexes = pd.read_csv(os.path.join(cur_dir, 'data', 'hexes.csv'), sep=';')
+        self.graph = self.graph.subgraph(hexes["hex"])
+        self.coords_df = self.coords_df.loc[self.coords_df["hex"].isin(hexes["hex"])]
+
+        # create dict from df for faster access
         self.d_coords = {}
         for _, row in self.coords_df.iterrows():
             self.d_coords[row["hex"]] = row[["lon_min", "lon_max", "lat_min", "lat_max"]]
+
+        # get neighbors of neighbors
+        self.d_neighbors = {}
+        for n in self.graph:
+            self.d_neighbors[n] = set(neigh_neigh_node
+                                      for neigh_node in self.graph.neighbors(n)
+                                      for neigh_neigh_node in self.graph.neighbors(neigh_node))
 
     def get_lonlat(self, hexagon):
         hex_row = self.d_coords[hexagon]

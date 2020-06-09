@@ -20,7 +20,7 @@ def _create_order_driver_pair(env, o, d):
 
 
 def _pairs_for_order(o, env, drivers):
-    close_hexes = [i for i in env.map.graph.neighbors(o.start_hex)] + [o.start_hex]
+    close_hexes = env.map.d_neighbors[o.start_hex]
     return [_create_order_driver_pair(env, o, d) for d in drivers if d.driver_hex in close_hexes]
 
 
