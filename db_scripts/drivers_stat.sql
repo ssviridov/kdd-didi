@@ -4,7 +4,7 @@ with J as
                , CASE
                      WHEN extract(epoch from ride_start_time
                          - lag(ride_stop_time)
-                           over (partition by driver_id order by ride_start_time)) < 3600
+                           over (partition by driver_id order by ride_start_time)) < 10800
                          THEN 0
                      ELSE 1
                  END group_ind
@@ -39,7 +39,7 @@ with J as
                , CASE
                      WHEN extract(epoch from ride_start_time
                          - lag(ride_stop_time)
-                           over (partition by driver_id order by ride_start_time)) < 3600
+                           over (partition by driver_id order by ride_start_time)) < 10800
                          THEN 0
                      ELSE 1
                  END group_ind
