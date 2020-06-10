@@ -7,7 +7,7 @@ import numpy as np
 def time_to_sincos(value, value_type: str):
     assert value_type in ['day_of_week', 'hour']
     if value_type == 'hour':
-        value_range = 23
+        value_range = 24
     else:
         value_range = 7
     return np.sin(value * (2. * np.pi / value_range)), np.cos(value * (2. * np.pi / value_range))
