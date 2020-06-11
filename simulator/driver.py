@@ -23,6 +23,7 @@ class DriversCollection(list):
         logger.info(f"Start initializing driver collection")
         self.env = env
         self.dict_view = {}
+        self.d_move = {}
         super().__init__()
 
     def delete_drivers(self):
@@ -40,14 +41,15 @@ class DriversCollection(list):
     def add_drivers(self, drivers: list):
         # logger.info("Start adding drivers")
         for start_hex, lifetime in drivers:
-            d = Driver(env=self.env, start_hex=start_hex, lifetime=lifetime)
+            d = Driver(env=self.env, start_hex=start_hex, lifetime=lifetime, d_move=self.d_move)
             self.append(d)
             self.dict_view[d.driver_id] = d
 
     def move_drivers(self):
-        # logger.info("Start moving drivers")
-        for driver in self:
-            driver.move()
+        if self.env.t in self.d_move:
+            for driver in self.d_move[self.env.t]:
+                driver.move()
+            del self.d_move[self.env.t]
 
     def get_drivers(self, status: str, n_drivers=None):
         # logger.info("Start getting drivers")
@@ -72,6 +74,8 @@ class DriversCollection(list):
         for resp in agent_response:
             driver = self.get_by_driver_id(resp['driver_id'])
             driver.route = self.env.map.calculate_path(driver.driver_hex, resp['destination'])
+            for s in driver.route:
+                driver.d_move.setdefault(s, []).append(driver)
             driver.status = 'reposition'
             driver.idle_time = 0
             resp['driver_hex'] = driver.driver_hex
@@ -83,6 +87,8 @@ class DriversCollection(list):
         for resp in model_response:
             driver = self.get_by_driver_id(resp['driver_id'])
             driver.route = self.env.map.calculate_path(driver.driver_hex, resp['idle_hex'])
+            for s in driver.route:
+                driver.d_move.setdefault(s, []).append(driver)
             driver.update_trajectory('idle')
 
     def get_dispatching_drivers(self):
@@ -101,9 +107,10 @@ class Driver:
     newid = itertools.count()
     status_list = ['idle', 'assigned', 'reposition']
 
-    def __init__(self, env, start_hex, lifetime=None):
+    def __init__(self, env, start_hex, d_move, lifetime=None):
         # logger.info(f"Start initializing driver")
         self.env = env
+        self.d_move = d_move
         self.driver_id = next(self.newid)
         self.driver_hex = start_hex
         self.driver_location = self.env.map.get_lonlat(start_hex)
@@ -132,6 +139,7 @@ class Driver:
             self.status = 'assigned'
             self.idle_time = 0
             self.update_trajectory('assigned')
+            self.d_move.setdefault(self.order.order_finish_timestamp - self.env.start_timestamp, []).append(self)
 
     def move(self):
         # logger.info(f"Start moving driver {self.driver_id}")

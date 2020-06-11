@@ -31,6 +31,7 @@ class Environment:
         self.hours = 0
         self.seconds = 0
         self.minutes = 0
+        self.start_timestamp = self.timestamp
 
         self.drivers_collection = DriversCollection(env=self)
         self.orders_collection = OrdersCollection(env=self)
