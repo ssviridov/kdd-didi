@@ -6,7 +6,7 @@ import torch.optim as optim
 
 import os
 from datetime import datetime as dt
-from .utils import time_to_sincos, match
+from utils import time_to_sincos, match
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -169,6 +169,59 @@ class ValueAgent(BaseAgent):
         hour_sin, hour_cos = time_to_sincos(hour, value_type='hour')
         day_of_week_sin, day_of_week_cos = time_to_sincos(day_of_week, value_type='day_of_week')
         return np.array([hour_sin, hour_cos, day_of_week_sin, day_of_week_cos, lon, lat])
+
+
+class ValueAgentDataset(ValueAgent):
+    def __init__(self, value_net_class,
+                 dataset,
+                 batch_size=32,
+                 gamma=0.99,
+                 device="cpu",
+                 optimizer=optim.Adam,
+                 lr=1e-3,
+                 hidden_dim=256,
+                 criterion=nn.MSELoss(),
+                 update=10,
+                 **kwargs):
+        state_dim = dataset.state_dim
+        super().__init__(value_net_class, None, batch_size, gamma, device, optimizer, lr, state_dim, hidden_dim,
+                         criterion, update)
+        self.dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, **kwargs)
+        self.iter_data = iter(self.dataloader)
+
+    def train(self):
+        try:
+            state, reward, next_state, info, done = self.iter_data.next()
+        except StopIteration:
+            raise StopIteration('Dataset iterator has reached its end, call reset_iter()')
+
+        state = state.to(self.device)
+        reward = reward.to(self.device)
+        next_state = next_state.to(self.device)
+        k = info.to(self.device)
+
+        value = self.value_net(state)
+        # target_value = (reward * ((self.gamma ** k) - 1)) / (k * (self.gamma - 1)) + \
+        #                (self.gamma ** k) * self.target_value_net(next_state)
+        target_value = reward + self.gamma * self.target_value_net(next_state)
+
+        value_loss = self.criterion(value, target_value.detach())
+
+        self.optimizer.zero_grad()
+        value_loss.backward()
+        self.optimizer.step()
+
+        self.iter += 1
+
+        if self.iter % self.update:
+            for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
+                target_param.data.copy_(param.data)
+
+        return value_loss.detach().item(), value.detach().mean().item(), value.detach().std().item()
+
+    def reset_iter(self):
+        self.iter_data = iter(self.dataloader)
+
 
 # if __name__ == '__main__':
 #     from buffers import MongoDBReplayBuffer
