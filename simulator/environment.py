@@ -76,10 +76,8 @@ class Environment:
         idle_drivers = [i for i in all_idle_drivers if i not in repositioning_drivers and not i.route]
 
         # Driver repositioning Model
-        self._repositioning(repositioning_drivers)
-
-        # Idle Drivers Movement Model (just assigning Driver.next_idle_location without move())
-        # self._idle_movement(idle_drivers)
+        if len(repositioning_drivers) > 0:
+            self._repositioning(repositioning_drivers)
 
     def idle_movement(self):
         logger.debug("Idle movement")
