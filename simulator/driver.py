@@ -65,7 +65,7 @@ class DriversCollection(list):
     def get_reposition_drivers(self, n_drivers: int):
         # logger.info("Start getting drivers for reposition")
         idle_drivers = self.get_drivers(status='idle')
-        for_reposition = [i for i in idle_drivers if i.idle_time >= self.env.VALID_REPOSITION_TIME]
+        for_reposition = [i for i in idle_drivers if i.env.t - i.last_order_time >= self.env.VALID_REPOSITION_TIME]
         return for_reposition[:n_drivers]
 
     def reposition(self, agent_response: list):
@@ -119,6 +119,7 @@ class Driver:
         self.deadline = lifetime + self.env.t
         self.status = 'idle'
         self.order = None
+        self.last_order_time = self.env.t
         self.route = {}
         self.idle_time = abs(int(np.random.normal(300, 200)))
         self._sample_start = None
@@ -138,6 +139,7 @@ class Driver:
             self.order = order_object
             self.status = 'assigned'
             self.idle_time = 0
+            self.last_order_time = self.order.order_finish_timestamp - self.env.start_timestamp
             self.update_trajectory('assigned')
             self.d_move.setdefault(self.order.order_finish_timestamp - self.env.start_timestamp, []).append(self)
 
