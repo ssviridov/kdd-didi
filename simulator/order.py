@@ -68,7 +68,8 @@ class OrdersCollection(list):
         return [i for i in self if i.status == status]
 
     def delete_unassigned_orders(self):
-        for order in self:
+        unassigned = self.get_orders('unassigned')
+        for order in unassigned:
             if order.status == 'unassigned':
                 self.remove(order)
 
