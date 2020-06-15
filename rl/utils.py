@@ -40,10 +40,11 @@ def match(dispatch_observ, order_id='order_id', driver_id='driver_id',
         result_dict[(driver_ind, order_ind)] = dict(driver_id=driver, order_id=order)
 
     cost = csr_matrix((weights, (driver_inds, order_inds)), shape=(next(driver_counter), next(order_counter))).todense()
-    if not maximize:
-        cost[cost == 0] = np.max(cost) + 1
-    else:
-        cost[cost == 0] = np.min(cost) - 1
+    if cost.any():
+        if not maximize:
+            cost[cost == 0] = np.max(cost) + 1
+        else:
+            cost[cost == 0] = np.min(cost) - 1
 
     row_ind, col_ind = linear_sum_assignment(cost, maximize)
 
