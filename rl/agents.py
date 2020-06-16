@@ -6,7 +6,7 @@ import torch.optim as optim
 
 import os
 from datetime import datetime as dt
-from utils import time_to_sincos, match
+from .utils import time_to_sincos, match
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -88,10 +88,7 @@ class ValueAgent(BaseAgent):
         self.hexes = pd.read_csv(os.path.join(cur_dir, 'data', 'hexes.csv'), sep=';')
 
     def dispatch(self, dispatch_observ):
-        weighted_observation = list()
-        for request in dispatch_observ:
-            request['weight'] = self.estimate_dispatching_request(request)
-            weighted_observation.append(request)
+        weighted_observation = self.estimate_dispatching_request(dispatch_observ)
         _, dispatch_action = match(weighted_observation, weight='weight')
         return dispatch_action
 
@@ -146,29 +143,34 @@ class ValueAgent(BaseAgent):
     def save(self, path):
         torch.save(self.value_net, path)
 
-    def estimate_dispatching_request(self, request: dict):
+    def estimate_dispatching_request(self, request: list):
+        if len(request) == 0:
+            return []
+        request_df = pd.DataFrame(request)
         needed_keys = {'timestamp', 'day_of_week', 'order_finish_timestamp',
                        'driver_location', 'order_finish_location', 'reward_units'}
-        assert not needed_keys.difference(set(request.keys()))
+        assert not needed_keys.difference(set(request_df.columns))
 
-        state_hour = dt.fromtimestamp(request['timestamp']).hour
-        next_state_hour = dt.fromtimestamp(request['order_finish_timestamp']).hour
+        state_tensor = self._prepare_state(request_df.copy(), time_col='timestamp',
+                                           day_of_week_col='day_of_week', location_col='driver_location')
+        next_state_tensor = self._prepare_state(request_df.copy(), time_col='order_finish_timestamp',
+                                                day_of_week_col='day_of_week', location_col='order_finish_location')
+        rewards_tensor = torch.FloatTensor(request_df['reward_units']).to(self.device)
 
-        raw_state = self._prepare_state(state_hour, request['day_of_week'],
-                                        request['driver_location'][0], request['driver_location'][1])
-        raw_next_state = self._prepare_state(next_state_hour, request['day_of_week'],
-                                             request['order_finish_location'][0], request['order_finish_location'][1])
-        state = torch.FloatTensor(raw_state).to(self.device)
-        next_state = torch.FloatTensor(raw_next_state).to(self.device)
+        weights_tensor = rewards_tensor + self.gamma * self.value_net(next_state_tensor).flatten() - \
+                         self.value_net(state_tensor).flatten()
+        request_df['weight'] = weights_tensor.detach().numpy()
+        return request_df.to_dict(orient='records')
 
-        value = request['reward_units'] + self.gamma * self.value_net(next_state) - self.value_net(state)
-        return value.detach().item()
-
-    @staticmethod
-    def _prepare_state(hour: int, day_of_week: int, lon: float, lat: float):
-        hour_sin, hour_cos = time_to_sincos(hour, value_type='hour')
-        day_of_week_sin, day_of_week_cos = time_to_sincos(day_of_week, value_type='day_of_week')
-        return np.array([hour_sin, hour_cos, day_of_week_sin, day_of_week_cos, lon, lat])
+    def _prepare_state(self, data: pd.DataFrame, time_col: str, day_of_week_col: str, location_col: str):
+        data[['lon', 'lat']] = pd.DataFrame(data[location_col].to_list(), columns=['lon', 'lat'])
+        data['hour'] = (pd.to_datetime(data[time_col], unit='s') + pd.DateOffset(hours=3)).dt.hour
+        data['hour_sin'], data['hour_cos'] = time_to_sincos(data['hour'], value_type='hour')
+        data['day_of_week_sin'], data['day_of_week_cos'] = time_to_sincos(data[day_of_week_col],
+                                                                          value_type='day_of_week')
+        data_matrix = data[['hour_sin', 'hour_cos', 'day_of_week_sin', 'day_of_week_cos', 'lon', 'lat']].values
+        data_tensor = torch.FloatTensor(data_matrix).to(self.device)
+        return data_tensor
 
 
 class ValueAgentDataset(ValueAgent):
@@ -221,7 +223,6 @@ class ValueAgentDataset(ValueAgent):
 
     def reset_iter(self):
         self.iter_data = iter(self.dataloader)
-
 
 # if __name__ == '__main__':
 #     from buffers import MongoDBReplayBuffer
