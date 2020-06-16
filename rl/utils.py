@@ -51,3 +51,20 @@ def match(dispatch_observ, order_id='order_id', driver_id='driver_id',
     result = [result_dict[key] for key in zip(row_ind, col_ind) if key in result_dict]
 
     return cost[row_ind, col_ind].sum(), result
+
+
+def regularize(model, p="0"):
+    """
+    Works only with Linear layers with ReLU activations.
+    """
+    reg = 1
+    if p == "inf":
+        dim = 1
+    if p == "0":
+        dim = 0
+
+    for name, param in model.named_parameters():
+        if "weight" in name:
+            reg *= torch.max(torch.abs(torch.sum(param, dim=dim)))
+
+    return reg
