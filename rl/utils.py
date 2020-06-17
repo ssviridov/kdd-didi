@@ -25,7 +25,8 @@ def match(dispatch_observ, order_id='order_id', driver_id='driver_id',
     order_inds = []
 
     for item in dispatch_observ:
-        weights.append(item[weight])
+        _weight = item['reward_units'] / (item['order_driver_distance']/100 + 1) + item['weight']
+        weights.append(_weight) #item[_weight])
 
         driver = item[driver_id]
         driver_ind = driver_dict.get(driver, next(driver_counter))
