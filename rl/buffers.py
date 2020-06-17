@@ -1,10 +1,14 @@
 import random
+import os
+import json
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from collections import deque
 from simulator.utils import DataManager
 from .utils import time_to_sincos
+
+cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class BaseReplayBuffer:
@@ -166,12 +170,64 @@ class MongoDBReplayBuffer(BaseReplayBuffer):
                          sample["lonlat_end"][1]]
             new_state_list.append(new_state)
 
+        return np.array(state_list), np.array(reward_list), np.array(new_state_list), np.array(info_list), np.array(
+            done_list)
+
+
+class MongoBufferRanks(MongoDBReplayBuffer):
+    def __init__(self):
+        with open(os.path.join(cur_dir, 'data', 'grids_ranks.json'), 'r') as f:
+            self.grids_ranks = json.load(f)
+        super().__init__()
+
+    def _prepare_samples(self, samples: list):
+        reward_list, info_list, state_list, new_state_list, done_list = list(), list(), list(), list(), list()
+        for sample in samples:
+            reward_list.append(sample['reward'])
+            info_list.append(sample['t_end'] - sample['t_start'] + 1)
+            done_list.append(sample['done'])
+
+            pickup_hour_sin, pickup_hour_cos = time_to_sincos(int(sample["t_start"] / (60 * 60)), value_type='hour')
+            pickup_weekday_sin, pickup_weekday_cos = time_to_sincos(sample["day_of_week"], value_type='day_of_week')
+            start_pickup_rank, start_dropoff_rank = self._get_grid_ranks(sample['hex_start'], sample['day_of_week'],
+                                                                         int(sample["t_start"] / (60 * 60)))
+
+            state = [pickup_hour_sin,
+                     pickup_hour_cos,
+                     pickup_weekday_sin,
+                     pickup_weekday_cos,
+                     sample["lonlat_start"][0],
+                     sample["lonlat_start"][1],
+                     start_pickup_rank,
+                     start_dropoff_rank]
+            state_list.append(state)
+
+            dropoff_hour_sin, dropoff_hour_cos = time_to_sincos(int(sample["t_end"] / (60 * 60)), value_type='hour')
+            dropoff_weekday_sin, dropoff_weekday_cos = time_to_sincos(sample["day_of_week"], value_type='day_of_week')
+            end_pickup_rank, end_dropoff_rank = self._get_grid_ranks(sample['hex_end'], sample['day_of_week'],
+                                                                     int(sample["t_end"] / (60 * 60)))
+
+            new_state = [dropoff_hour_sin,
+                         dropoff_hour_cos,
+                         dropoff_weekday_sin,
+                         dropoff_weekday_cos,
+                         sample["lonlat_end"][0],
+                         sample["lonlat_end"][1],
+                         end_pickup_rank,
+                         end_dropoff_rank]
+            new_state_list.append(new_state)
+
         return np.array(state_list), np.array(reward_list), np.array(new_state_list), np.array(info_list), np.array(done_list)
+
+    def _get_grid_ranks(self, hex_id, day_of_week, hour):
+        idx = hex_id + '_' + str(day_of_week) + '_' + str(hour)
+        ranks = self.grids_ranks.get(idx, {'pickup_rank': 0, 'dropoff_rank': 0})
+        return ranks['pickup_rank'], ranks['dropoff_rank']
 
 
 # if __name__ == "__main__":
 #     from pprint import pprint
 #
-#     test = MongoDBReplayBuffer()
+#     test = MongoBufferRanks()
 #     pprint(len(test))
 #     pprint(test.sample(batch_size=10))
