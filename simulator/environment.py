@@ -49,6 +49,8 @@ class Environment:
         self.idle_trans_model = IdleTransitionModel(random_seed=random_seed)
 
         self.random_seed = random_seed
+        if random_seed:
+            np.random.seed(random_seed)
 
     def update_current_time(self, current_seconds):
         logger.info(f"[{current_seconds}s] simulation time")
@@ -157,6 +159,7 @@ class Environment:
 
     def _dispatching(self, orders, drivers):
         prepared_request = prepare_dispatching_request(env=self, drivers=drivers, orders=orders)
+        logger.debug("Start agent dispatch")
         agent_response = self.agent.dispatch(dispatch_observ=prepared_request)
         handle_dispatching_response(env=self, agent_request=prepared_request, agent_response=agent_response)
         self.datacollector.collect_dispatching(prepared_request, agent_response)
