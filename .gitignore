@@ -1,2 +1,7 @@
 .idea
 .pyc
+experiments
+.DS_Store
+rl/data/rides_and_repositions.csv
+rl/experiments
+rl/__pycache__

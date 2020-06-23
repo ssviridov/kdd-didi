@@ -6,7 +6,7 @@ import torch.optim as optim
 
 import os
 from datetime import datetime as dt
-from .utils import time_to_sincos, match
+from utils import time_to_sincos, match
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -96,8 +96,8 @@ class ValueAgent(BaseAgent):
         hexes = self.hexes.copy()
 
         hour = dt.fromtimestamp(repo_observ['timestamp']).hour
-        h_sin, h_cos = time_to_sincos(hour, value_type='hour')
-        d_sin, d_cos = time_to_sincos(repo_observ['day_of_week'], value_type='day_of_week')
+        #h_sin, h_cos = time_to_sincos(hour, value_type='hour')
+        #d_sin, d_cos = time_to_sincos(repo_observ['day_of_week'], value_type='day_of_week')
         hexes['hour_sin'], hexes['hour_cos'] = [h_sin, h_cos]
         hexes['day_of_week_sin'], hexes['day_of_week_cos'] = [d_sin, d_cos]
         raw_states = hexes[['hour_sin', 'hour_cos', 'day_of_week_sin', 'day_of_week_cos', 'lon', 'lat']].values
