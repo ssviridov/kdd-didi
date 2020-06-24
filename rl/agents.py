@@ -134,7 +134,7 @@ class ValueAgent(BaseAgent):
 
         self.iter += 1
 
-        if self.iter % self.update:
+        if self.iter % self.update == 0:
             for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(param.data)
 
@@ -215,7 +215,7 @@ class ValueAgentDataset(ValueAgent):
 
         self.iter += 1
 
-        if self.iter % self.update:
+        if self.iter % self.update == 0:
             for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(param.data)
 
