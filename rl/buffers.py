@@ -139,6 +139,7 @@ class MongoDBReplayBuffer(BaseReplayBuffer):
             samples = self.db_client.trajectories_collection.aggregate([{"$sample": {"size": batch_size}}])
         else:
             samples = self.db_client.training_collection.aggregate([{"$sample": {"size": batch_size}}])
+            self.db_client.truncate_training_collection()
         state, reward, new_state, info, done = self._prepare_samples(list(samples))
         return state, reward, new_state, info, done
 
@@ -187,10 +188,14 @@ class MongoBufferRanks(MongoDBReplayBuffer):
             info_list.append(sample['t_end'] - sample['t_start'] + 1)
             done_list.append(sample['done'])
 
-            pickup_hour_sin, pickup_hour_cos = time_to_sincos(int(sample["t_start"] / (60 * 60)), value_type='hour')
+            start_hour = int(sample["t_start"] / (60 * 60))
+            pickup_hour_sin, pickup_hour_cos = time_to_sincos(start_hour, value_type='hour')
             pickup_weekday_sin, pickup_weekday_cos = time_to_sincos(sample["day_of_week"], value_type='day_of_week')
             start_pickup_rank, start_dropoff_rank = self._get_grid_ranks(sample['hex_start'], sample['day_of_week'],
                                                                          int(sample["t_start"] / (60 * 60)))
+            start_minute = int(sample["t_start"] / 60)
+            start_minute_5 = int(sample["t_start"] / 60 / 5)
+            start_minute_10 = int(sample["t_start"] / 60 / 10)
 
             state = [pickup_hour_sin,
                      pickup_hour_cos,
@@ -199,13 +204,19 @@ class MongoBufferRanks(MongoDBReplayBuffer):
                      sample["lonlat_start"][0],
                      sample["lonlat_start"][1],
                      start_pickup_rank,
-                     start_dropoff_rank]
+                     start_dropoff_rank,
+                     start_minute,
+                     start_minute_5,
+                     start_minute_10]
             state_list.append(state)
 
             dropoff_hour_sin, dropoff_hour_cos = time_to_sincos(int(sample["t_end"] / (60 * 60)), value_type='hour')
             dropoff_weekday_sin, dropoff_weekday_cos = time_to_sincos(sample["day_of_week"], value_type='day_of_week')
             end_pickup_rank, end_dropoff_rank = self._get_grid_ranks(sample['hex_end'], sample['day_of_week'],
                                                                      int(sample["t_end"] / (60 * 60)))
+            end_minute = int(sample["t_end"] / 60)
+            end_minute_5 = int(sample["t_end"] / 60 / 5)
+            end_minute_10 = int(sample["t_end"] / 60 / 10)
 
             new_state = [dropoff_hour_sin,
                          dropoff_hour_cos,
@@ -214,7 +225,10 @@ class MongoBufferRanks(MongoDBReplayBuffer):
                          sample["lonlat_end"][0],
                          sample["lonlat_end"][1],
                          end_pickup_rank,
-                         end_dropoff_rank]
+                         end_dropoff_rank,
+                         end_minute,
+                         end_minute_5,
+                         end_minute_10]
             new_state_list.append(new_state)
 
         return np.array(state_list), np.array(reward_list), np.array(new_state_list), np.array(info_list), np.array(done_list)
