@@ -28,7 +28,7 @@ class TaxiSimulator:
 
         self.random_seed = random_seed
 
-    def simulate(self, day_of_week: int, agent, training_each=60, simulation_name=None):
+    def simulate(self, day_of_week: int, agent, training_each=60, simulation_name=None, plot_dir=cur_dir):
         if self.db_client:
             self.db_client(simulation_name)
             self.db_client.truncate_training_collection()
@@ -55,7 +55,8 @@ class TaxiSimulator:
                     losses.append(loss[0])
                     v_mean.append(loss[1])
                     v_std.append(loss[2])
-                    self.plot_losses(losses, v_mean, v_std, sec)
+                    if sec % (training_each*10) == 0:
+                        self.plot_losses(losses, v_mean, v_std, sec, plot_dir)
         if not self.db_client:
             return env.datacollector.data
         return env.agent
@@ -64,7 +65,7 @@ class TaxiSimulator:
         return self.db_client.read_simulation(name)
 
     @staticmethod
-    def plot_losses(losses: list, v_mean: list, v_std: list, sec: int):
+    def plot_losses(losses: list, v_mean: list, v_std: list, sec: int, plot_dir):
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(16, 8), sharex=True)
 
         ax1.plot(losses, color='b')
@@ -75,9 +76,12 @@ class TaxiSimulator:
 
         ax3.plot(v_std, color='g')
         ax3.set_ylabel('V-std')
-        ax3.set_xlabel('5mins')
+        ax3.set_xlabel('2mins')
 
         fig.suptitle(f'{sec} of the day')
 
-        plt.ion()
-        plt.show()
+        plt.savefig(os.path.join(plot_dir, 'loss.png'))
+
+        # plt.ion()
+        # plt.show()
+
