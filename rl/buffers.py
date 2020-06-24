@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from collections import deque
 from simulator.utils import DataManager
-from .utils import time_to_sincos
+from utils import time_to_sincos
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 

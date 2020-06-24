@@ -2,6 +2,7 @@ from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csr_matrix
 from itertools import count
 import numpy as np
+import torch
 
 
 def time_to_sincos(value, value_type: str):
