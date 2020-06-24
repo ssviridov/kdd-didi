@@ -3,10 +3,14 @@ from torch import nn
 import numpy as np
 import pandas as pd
 import torch.optim as optim
+from sklearn.neighbors import NearestCentroid
 
 import os
+import json
 from datetime import datetime as dt
 from .utils import time_to_sincos, match
+import warnings
+warnings.filterwarnings('ignore')
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -134,7 +138,7 @@ class ValueAgent(BaseAgent):
 
         self.iter += 1
 
-        if self.iter % self.update:
+        if self.iter % self.update == 0:
             for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(param.data)
 
@@ -155,10 +159,9 @@ class ValueAgent(BaseAgent):
                                            day_of_week_col='day_of_week', location_col='driver_location')
         next_state_tensor = self._prepare_state(request_df.copy(), time_col='order_finish_timestamp',
                                                 day_of_week_col='day_of_week', location_col='order_finish_location')
-        rewards_tensor = torch.FloatTensor(request_df['reward_units']).to(self.device)
 
-        weights_tensor = rewards_tensor + self.gamma * self.value_net(next_state_tensor).flatten() - \
-                         self.value_net(state_tensor).flatten()
+        weights_tensor = self.gamma * self.value_net(next_state_tensor).flatten() - self.value_net(
+            state_tensor).flatten()
         request_df['weight'] = weights_tensor.detach().numpy()
         return request_df.to_dict(orient='records')
 
@@ -215,7 +218,7 @@ class ValueAgentDataset(ValueAgent):
 
         self.iter += 1
 
-        if self.iter % self.update:
+        if self.iter % self.update == 0:
             for target_param, param in zip(self.target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(param.data)
 
@@ -223,6 +226,80 @@ class ValueAgentDataset(ValueAgent):
 
     def reset_iter(self):
         self.iter_data = iter(self.dataloader)
+
+
+class ValueRanksAgent(ValueAgent):
+
+    STATE_REPRESENTATION = ['hour_sin', 'hour_cos', 'day_of_week_sin', 'day_of_week_cos',
+                            'lon', 'lat', 'pickup_rank', 'dropoff_rank', 'minute', 'minute_5', 'minute_10']
+
+    def __init__(self, **kwargs):
+        with open(os.path.join(cur_dir, 'data', 'grids_ranks.json'), 'r') as f:
+            self.grids_ranks = json.load(f)
+        super().__init__(**kwargs)
+        self.grid_model = NearestCentroid()
+        self.grid_model.fit(self.hexes[['lon', 'lat']].values, self.hexes.index.values)
+
+    def reposition(self, repo_observ: dict):
+        hexes = self.hexes.copy()
+
+        hour = dt.fromtimestamp(repo_observ['timestamp']).hour
+        minute = dt.fromtimestamp(repo_observ['timestamp']).minute
+        seconds = dt.fromtimestamp(repo_observ['timestamp']).second
+        t = hour * 60 * 60 + minute * 60 + seconds
+
+        h_sin, h_cos = time_to_sincos(hour, value_type='hour')
+        d_sin, d_cos = time_to_sincos(repo_observ['day_of_week'], value_type='day_of_week')
+        hexes['hour_sin'], hexes['hour_cos'] = [h_sin, h_cos]
+        hexes['day_of_week_sin'], hexes['day_of_week_cos'] = [d_sin, d_cos]
+        hexes['idx'] = hexes['hex'] + '_' + str(repo_observ['day_of_week']) + '_' + str(hour)
+        ranks = pd.DataFrame([self.grids_ranks.get(idx, {'pickup_rank': 0, 'dropoff_rank': 0}) for idx in hexes['idx']])
+        hexes[['pickup_rank', 'dropoff_rank']] = ranks
+        hexes['minute'] = int(t / 60)
+        hexes['minute_5'] = int(t / 60 / 5)
+        hexes['minute_10'] = int(t / 60 / 10)
+
+        raw_states = hexes[self.STATE_REPRESENTATION].values
+
+        states = torch.FloatTensor(raw_states).to(self.device)
+        hexes['value'] = self.value_net(states).detach().numpy().flatten()
+        reposition_spots = hexes.nlargest(len(repo_observ['driver_info']), columns='value')
+
+        drivers = pd.DataFrame(repo_observ['driver_info'])
+        drivers_states = pd.merge(drivers, hexes, how='left',
+                                  left_on='grid_id', right_on='hex').drop('hex', axis=1).sort_values('value')
+
+        return [{'driver_id': driver, 'destination': grid}
+                for driver, grid in zip(drivers_states.driver_id.values, reposition_spots.hex.values)]
+
+    def _get_hex_by_lonalat(self, lonlat_df: pd.DataFrame):
+        lonlat_df.loc[:, 'centroid'] = self.grid_model.predict(lonlat_df[['lon', 'lat']].values)
+        return pd.merge(lonlat_df, self.hexes, how='left', left_on='centroid', right_index=True).hex
+
+    def _get_grid_ranks(self, df):
+        data = df.copy()
+        data['hex_id'] = self._get_hex_by_lonalat(data[['lon', 'lat']])
+        data['idx'] = data['hex_id'] + '_' + data['day_of_week'].astype(str) + '_' + data['hour'].astype(str)
+        ranks = pd.DataFrame([self.grids_ranks.get(idx, {'pickup_rank': 0, 'dropoff_rank': 0}) for idx in data['idx']])
+        return ranks['pickup_rank'], ranks['dropoff_rank']
+
+    def _prepare_state(self, data: pd.DataFrame, time_col: str, day_of_week_col: str, location_col: str):
+        data[['lon', 'lat']] = pd.DataFrame(data[location_col].to_list(), columns=['lon', 'lat'])
+        data['hour'] = (pd.to_datetime(data[time_col], unit='s') + pd.DateOffset(hours=3)).dt.hour
+        data['minute'] = (pd.to_datetime(data[time_col], unit='s') + pd.DateOffset(hours=3)).dt.minute
+        data['seconds'] = (pd.to_datetime(data[time_col], unit='s') + pd.DateOffset(hours=3)).dt.second
+        data['t'] = data['hour'] * 60 * 60 + data['minute'] * 60 + data['seconds']
+        data['hour_sin'], data['hour_cos'] = time_to_sincos(data['hour'], value_type='hour')
+        data['day_of_week_sin'], data['day_of_week_cos'] = time_to_sincos(data[day_of_week_col],
+                                                                          value_type='day_of_week')
+        data['minute'] = (data['t'] / 60).astype(int)
+        data['minute_5'] = (data['t'] / 60 / 5).astype(int)
+        data['minute_10'] = (data['t'] / 60 / 10).astype(int)
+        data['pickup_rank'], data['dropoff_rank'] = self._get_grid_ranks(data)
+
+        data_matrix = data[self.STATE_REPRESENTATION].values
+        data_tensor = torch.FloatTensor(data_matrix).to(self.device)
+        return data_tensor
 
 # if __name__ == '__main__':
 #     from buffers import MongoDBReplayBuffer
