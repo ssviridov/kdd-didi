@@ -155,9 +155,7 @@ class ValueAgent(BaseAgent):
                                            day_of_week_col='day_of_week', location_col='driver_location')
         next_state_tensor = self._prepare_state(request_df.copy(), time_col='order_finish_timestamp',
                                                 day_of_week_col='day_of_week', location_col='order_finish_location')
-        rewards_tensor = torch.FloatTensor(request_df['reward_units']).to(self.device)
-
-        weights_tensor = rewards_tensor + self.gamma * self.value_net(next_state_tensor).flatten() - \
+        weights_tensor = self.gamma * self.value_net(next_state_tensor).flatten() - \
                          self.value_net(state_tensor).flatten()
         request_df['weight'] = weights_tensor.detach().numpy()
         return request_df.to_dict(orient='records')
