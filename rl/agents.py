@@ -6,6 +6,7 @@ import torch.optim as optim
 
 import os
 from datetime import datetime as dt
+from dateutil.tz import tzlocal
 from .utils import time_to_sincos, match
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -162,7 +163,7 @@ class ValueAgent(BaseAgent):
 
     def _prepare_state(self, data: pd.DataFrame, time_col: str, day_of_week_col: str, location_col: str):
         data[['lon', 'lat']] = pd.DataFrame(data[location_col].to_list(), columns=['lon', 'lat'])
-        data['hour'] = (pd.to_datetime(data[time_col], unit='s') + pd.DateOffset(hours=3)).dt.hour
+        data['hour'] = pd.to_datetime(data[time_col], unit='s').dt.tz_localize("UTC").dt.tz_convert(tzlocal()).dt.hour
         data['hour_sin'], data['hour_cos'] = time_to_sincos(data['hour'], value_type='hour')
         data['day_of_week_sin'], data['day_of_week_cos'] = time_to_sincos(data[day_of_week_col],
                                                                           value_type='day_of_week')
