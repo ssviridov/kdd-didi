@@ -5,3 +5,4 @@ experiments
 rl/data/rides_and_repositions.csv
 rl/experiments
 rl/__pycache__
+data

@@ -61,7 +61,11 @@ class CSVDataset(torch.utils.data.Dataset):
             raise IndexError('Index %d is out of the dataset bounds' % idx)
 
         # return state, reward, next_state, info, done
-        return item[self.state_cols_idx].astype(np.float32), item[self.reward_cols_idx].astype(np.float32), item[self.next_state_cols_idx].astype(np.float32), item[self.info_cols_idx].astype(np.float32), item[self.done_cols_idx].astype(np.float32)
+
+        state = {'cat': torch.LongTensor(item[self.state_cols_idx][:4].astype(np.int64)).to('cuda'), 'cont': torch.FloatTensor(item[self.state_cols_idx][4:].astype(np.float32)).to('cuda')}
+        next_state = {'cat': torch.LongTensor(item[self.next_state_cols_idx][:4].astype(np.int64)).to('cuda'), 'cont': torch.FloatTensor(item[self.next_state_cols_idx][4:].astype(np.float32)).to('cuda')}
+
+        return state, item[self.reward_cols_idx].astype(np.float32), next_state, item[self.info_cols_idx].astype(np.float32), item[self.done_cols_idx].astype(np.float32)
 
     def __len__(self):
         """

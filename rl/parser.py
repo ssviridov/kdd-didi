@@ -1,7 +1,7 @@
 import argparse
 from torch.optim import Adam
 from torch import nn
-from models import ValueNetwork
+from models import ValueNetwork, EmbedNetwork
 import datetime
 import os
 from preprocess import simple_preprocess
@@ -18,7 +18,7 @@ def get_args():
     parser.add_argument(
         '--csv-file',
         type=str,
-        default='rides_and_repositions.csv',
+        default='didi_calc_rides_and_repositions.csv',
         help='Example: --csv-file filename.csv')
 
     parser.add_argument(
@@ -42,13 +42,13 @@ def get_args():
     parser.add_argument(
         '--state-cols',
         action='store', dest='state',
-        type=str, nargs='*', default=['pickup_weekday', 'pickup_hour', 'pickup_lon', 'pickup_lat'],
+        type=str, nargs='*', default=['pickup_seconds', 'day_of_week', 'day_of_month', 'pickup_second_sin', 'pickup_second_cos', 'day_of_week_sin', 'day_of_week_cos', 'day_of_month_sin', 'day_of_month_cos', 'pickup_lon', 'pickup_lat'],
         help='Example: --state-cols item1 item2 item3')
 
     parser.add_argument(
         '--next-state-cols',
         action='store', dest='next_state',
-        type=str, nargs='*', default=['dropoff_weekday', 'dropoff_hour', 'dropoff_lon', 'dropoff_lat'],
+        type=str, nargs='*', default=['dropoff_seconds', 'day_of_week', 'day_of_month', 'dropoff_second_sin', 'dropoff_second_cos', 'day_of_week_sin', 'day_of_week_cos', 'day_of_month_sin', 'day_of_month_cos', 'dropoff_lon', 'dropoff_lat'],
         help='Example: --next-state-cols item1 item2 item3')
 
     parser.add_argument(
@@ -78,17 +78,17 @@ def get_args():
 
     parser.add_argument(
         '--batch-size',
-        type=int, default=32,
+        type=int, default=1024,
         help='Example: --batch_size 32')
 
     parser.add_argument(
         '--gamma',
         type=float, default=0.92,
-        help='Example: --gamma 0.99')
+        help='Example: --gamma 0.92')
 
     parser.add_argument(
         '--device',
-        type=str, default='cpu',
+        type=str, default='cuda',
         help='Example: --device cuda')
 
     parser.add_argument(
@@ -113,13 +113,13 @@ def get_args():
 
     parser.add_argument(
         '--update',
-        type=int, default=10,
-        help='Example: --update 100')
+        type=int, default=10000,
+        help='Example: --update 100000')
 
     parser.add_argument(
         '--num-epochs',
-        type=int, default=10,
-        help='Example: --num-epochs 10')
+        type=int, default=20,
+        help='Example: --num-epochs 20')
 
     args = parser.parse_args()
 
@@ -130,7 +130,7 @@ def get_args():
         args.optimizer = Adam
 
     if args.network == 'default':
-        args.network = ValueNetwork
+        args.network = EmbedNetwork
 
     if args.criterion == 'default':
         args.criterion = nn.MSELoss()
